@@ -1,0 +1,10 @@
+#!/bin/bash
+set -euo pipefail
+
+cd "$(dirname "$0")"
+
+echo Building...
+npm run build
+
+echo Deploying...
+rsync -vr dist/* folf.zt.hails.org:/var/www/music.hails.org/
