@@ -60,6 +60,7 @@
       noAlbum: { type: Boolean, default: false },
       noArtist: { type: Boolean, default: false },
       noDuration: { type: Boolean, default: false },
+      noQueueTrackList: { type: Boolean, default: false },
     },
     setup() {
       return {
@@ -78,6 +79,10 @@
       play(index: number) {
         if (this.tracks[index].id === this.playingTrackId) {
           return this.playerStore.playPause()
+        }
+        if (this.noQueueTrackList) {
+          const track = this.tracks[index]
+          return this.playerStore.playNow([track])
         }
         return this.playerStore.playTrackList(this.tracks, index)
       },

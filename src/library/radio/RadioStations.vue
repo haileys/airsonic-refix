@@ -9,7 +9,7 @@
       </b-button>
     </div>
 
-    <TrackList v-if="items.length > 0" :tracks="items" no-artist no-album no-duration>
+    <TrackList v-if="items.length > 0" :tracks="items" no-artist no-album no-duration no-queue-track-list>
       <template #context-menu="{ item }">
         <ContextMenuItem icon="edit" @click="openEditModal(item)">
           Edit
