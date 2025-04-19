@@ -252,7 +252,7 @@ export const usePlayerStore = defineStore('player', {
     async setVolume(value: number) {
       this.volume = value
       if (this.sonicast) {
-        await this.setVolume(this.volume)
+        await this.sonicast.setVolume(this.volume)
         return
       }
       audio.setVolume(value)
@@ -261,7 +261,7 @@ export const usePlayerStore = defineStore('player', {
     async setPlaybackRate(value: number) {
       this.podcastPlaybackRate = value
       if (this.sonicast) {
-        await this.setPlaybackRate(this.podcastPlaybackRate)
+        await this.sonicast.setPlaybackRate(this.podcastPlaybackRate)
         return
       }
       localStorage.setItem('player.podcastPlaybackRate', String(value))
@@ -272,7 +272,7 @@ export const usePlayerStore = defineStore('player', {
     async setShuffle(enable: boolean) {
       this.shuffle = enable
       if (this.sonicast) {
-        await this.setShuffle(this.shuffle)
+        await this.sonicast.setShuffle(this.shuffle)
         return
       }
       localStorage.setItem('player.shuffle', String(enable))
