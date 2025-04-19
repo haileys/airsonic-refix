@@ -4,6 +4,7 @@ import Router from 'vue-router'
 import AppComponent from '@/app/App.vue'
 import { createApp } from '@/shared/compat'
 import { components } from '@/shared/components'
+import { config } from '@/shared/config'
 import { setupRouter } from '@/shared/router'
 import { useMainStore } from '@/shared/store'
 import { API } from '@/shared/api'
@@ -35,7 +36,7 @@ const auth = createAuth()
 const api = createApi(auth)
 const router = setupRouter(auth)
 
-const sonicast = new Sonicast(api, 'http://127.0.0.1:3000/')
+const sonicast = new Sonicast(api, config.sonicastUrl)
 
 const pinia = createPinia()
   .use(({ store }) => {
