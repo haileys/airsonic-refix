@@ -106,14 +106,14 @@
       dragstart(id: string, event: any) {
         event.dataTransfer.setData('application/x-track-id', id)
       },
-      remove(idx: number) {
-        return this.playerStore.removeFromQueue(idx)
+      async remove(idx: number) {
+        await this.playerStore.removeFromQueue(idx)
       },
-      clear() {
-        return this.playerStore.clearQueue()
+      async clear() {
+        await this.playerStore.clearQueue()
       },
-      shuffle() {
-        return this.playerStore.shuffleQueue()
+      async shuffle() {
+        await this.playerStore.shuffleQueue()
       }
     }
   })

@@ -68,7 +68,7 @@
       },
       async playLater(id: string) {
         const album = await this.$api.getAlbumDetails(id)
-        return this.playerStore.addToQueue(album.tracks!)
+        return await this.playerStore.addToQueue(album.tracks!)
       },
       toggleFavourite(id: string) {
         return this.favouriteStore.toggle('album', id)

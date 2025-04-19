@@ -9,6 +9,7 @@ import { useMainStore } from '@/shared/store'
 import { API } from '@/shared/api'
 import { createAuth } from '@/auth/service'
 import { setupAudio, usePlayerStore } from './player/store'
+import { Sonicast } from './player/remote'
 import { createApi } from '@/shared'
 import { createPinia, PiniaVuePlugin } from 'pinia'
 import { useFavouriteStore } from '@/library/favourite/store'
@@ -23,6 +24,7 @@ declare module 'vue/types/vue' {
 declare module 'pinia' {
   export interface PiniaCustomProperties {
     api: API;
+    sonicast: Sonicast;
   }
 }
 
@@ -33,15 +35,18 @@ const auth = createAuth()
 const api = createApi(auth)
 const router = setupRouter(auth)
 
+const sonicast = new Sonicast(api, 'http://127.0.0.1:3000/')
+
 const pinia = createPinia()
   .use(({ store }) => {
     store.api = markRaw(api)
+    store.sonicast = sonicast
   })
 
 const mainStore = useMainStore(pinia)
 const playerStore = usePlayerStore(pinia)
 
-setupAudio(playerStore, mainStore, api)
+setupAudio(playerStore, mainStore, api, sonicast)
 
 watch(
   () => mainStore.isLoggedIn,

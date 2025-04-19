@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { shuffle, shuffled, trackListEquals, formatArtists } from '@/shared/utils'
 import { API, Track } from '@/shared/api'
 import { AudioController, ReplayGainMode } from '@/player/audio'
+import { Sonicast } from '@/player/remote'
 import { useMainStore } from '@/shared/store'
 
 localStorage.removeItem('player.mute')
@@ -58,19 +59,36 @@ export const usePlayerStore = defineStore('player', {
   },
   actions: {
     async playNow(tracks: Track[]) {
+      if (this.sonicast) {
+        await this.sonicast.playTrackList(tracks, { index: 0, shuffle: false })
+        return
+      }
       this.setShuffle(false)
       await this.playTrackList(tracks, 0)
     },
     async shuffleNow(tracks: Track[]) {
+      if (this.sonicast) {
+        await this.sonicast.playTrackList(tracks, { shuffle: true })
+        return
+      }
       this.setShuffle(true)
       await this.playTrackList(tracks)
     },
     async playTrackListIndex(index: number) {
-      this.setQueueIndex(index)
-      this.setPlaying()
+      if (this.sonicast) {
+        // TODO translate this into an mpd id client side to fix race condition
+        await this.sonicast.playIndex(index)
+        return
+      }
+      this._setQueueIndex(index)
+      this._setPlaying()
       await audio.changeTrack({ ...this.track, playbackRate: this.playbackRate })
     },
     async playTrackList(tracks: Track[], index?: number) {
+      if (this.sonicast) {
+        await this.sonicast.playTrackList(tracks, { index })
+        return
+      }
       if (index == null) {
         index = this.shuffle ? Math.floor(Math.random() * tracks.length) : 0
       }
@@ -80,129 +98,202 @@ export const usePlayerStore = defineStore('player', {
         index = 0
       }
       if (!trackListEquals(this.queue || [], tracks)) {
-        this.setQueue(tracks)
+        this._setQueue(tracks)
       }
-      this.setQueueIndex(index)
-      this.setPlaying()
+      this._setQueueIndex(index)
+      this._setPlaying()
       await audio.changeTrack({ ...this.track, playbackRate: this.playbackRate })
     },
     async resume() {
-      this.setPlaying()
-      await audio.resume()
+      this._setPlaying()
+      if (this.sonicast) {
+        await this.sonicast.play()
+      } else {
+        await audio.resume()
+      }
     },
     async pause() {
-      audio.pause()
-      this.setPaused()
+      this._setPaused()
+      if (this.sonicast) {
+        await this.sonicast.pause()
+      } else {
+        audio.pause()
+      }
     },
     async playPause() {
-      return this.isPlaying ? this.pause() : this.resume()
+      return this.isPlaying ? await this.pause() : await this.resume()
     },
     async next() {
-      this.setQueueIndex(this.queueIndex + 1)
-      this.setPlaying()
+      if (this.sonicast) {
+        await this.sonicast.next()
+        return
+      }
+      this._setQueueIndex(this.queueIndex + 1)
+      this._setPlaying()
       await audio.changeTrack({ ...this.track, playbackRate: this.playbackRate })
     },
     async previous() {
-      this.setQueueIndex(audio.currentTime() > 3 ? this.queueIndex : this.queueIndex - 1)
-      this.setPlaying()
+      if (this.sonicast) {
+        await this.sonicast.previous()
+        return
+      }
+      this._setQueueIndex(audio.currentTime() > 3 ? this.queueIndex : this.queueIndex - 1)
+      this._setPlaying()
       await audio.changeTrack(this.track!)
     },
     async seek(value: number) {
+      if (this.sonicast) {
+        if (isFinite(this.duration)) {
+          await this.sonicast.seek(this.duration * value)
+        }
+        return
+      }
       if (isFinite(this.duration)) {
         await audio.seek(this.duration * value)
       }
     },
     async loadQueue() {
+      if (this.sonicast) {
+        const { tracks, currentTrack, currentTrackPosition } = await this.sonicast.getPlayQueue()
+        this._setQueue(tracks)
+        this._setQueueIndex(currentTrack)
+        this.currentTime = currentTrackPosition
+        return
+      }
       const { tracks, currentTrack, currentTrackPosition } = await this.api.getPlayQueue()
-      this.setQueue(tracks)
-      this.setQueueIndex(currentTrack)
-      this.setPaused()
+      this._setQueue(tracks)
+      this._setQueueIndex(currentTrack)
+      this._setPaused()
       await audio.changeTrack({ ...this.track, paused: true, playbackRate: this.playbackRate })
       await audio.seek(currentTrackPosition)
     },
     async resetQueue() {
-      this.setQueueIndex(0)
-      this.setPaused()
+      if (this.sonicast) {
+        await this.sonicast.resetQueue()
+        return
+      }
+      this._setQueueIndex(0)
+      this._setPaused()
       await audio.changeTrack({ ...this.track, paused: true, playbackRate: this.playbackRate })
     },
     async clearQueue() {
+      if (this.sonicast) {
+        await this.sonicast.clearQueue()
+        return
+      }
       if (!this.queue) {
         return
       }
       if (this.queue.length > 1) {
-        this.setQueue([this.queue[this.queueIndex]])
-        this.setQueueIndex(0)
+        this._setQueue([this.queue[this.queueIndex]])
+        this._setQueueIndex(0)
       } else {
-        this.setQueue([])
-        this.setQueueIndex(-1)
-        this.setPaused()
+        this._setQueue([])
+        this._setQueueIndex(-1)
+        this._setPaused()
         await audio.changeTrack({ })
       }
     },
-    addToQueue(tracks: Track[]) {
+    async addToQueue(tracks: Track[]) {
+      if (this.sonicast) {
+        await this.sonicast.addToQueue(tracks)
+        return
+      }
       this.queue?.push(...this.shuffle ? shuffled(tracks) : tracks)
     },
-    setNextInQueue(tracks: Track[]) {
+    async setNextInQueue(tracks: Track[]) {
+      if (this.sonicast) {
+        await this.sonicast.setNextInQueue(tracks)
+        return
+      }
       this.queue?.splice(this.queueIndex + 1, 0, ...this.shuffle ? shuffled(tracks) : tracks)
     },
-    removeFromQueue(index: number) {
+    async removeFromQueue(index: number) {
+      if (this.sonicast) {
+        await this.sonicast.removeFromQueue(index)
+        return
+      }
       this.queue?.splice(index, 1)
       if (index < this.queueIndex) {
         this.queueIndex--
       }
     },
-    shuffleQueue() {
+    async shuffleQueue() {
+      if (this.sonicast) {
+        await this.sonicast.shuffleQueue()
+        return
+      }
       if (this.queue && this.queue.length > 0) {
         this.queue = shuffled(this.queue, this.queueIndex)
         this.queueIndex = 0
       }
     },
-    toggleReplayGain() {
+    async toggleReplayGain() {
       const mode = (this.replayGainMode + 1) % ReplayGainMode._Length
-      audio.setReplayGainMode(mode)
       this.replayGainMode = mode
+      if (this.sonicast) {
+        await this.sonicast.replayGainMode(this.replayGainMode)
+        return
+      }
+      audio.setReplayGainMode(mode)
       localStorage.setItem('player.replayGainMode', `${mode}`)
     },
-    toggleRepeat() {
+    async toggleRepeat() {
       this.repeat = !this.repeat
+      if (this.sonicast) {
+        await this.sonicast.setRepeat(this.repeat)
+        return
+      }
       localStorage.setItem('player.repeat', String(this.repeat))
     },
-    toggleShuffle() {
-      this.setShuffle(!this.shuffle)
+    async toggleShuffle() {
+      await this.setShuffle(!this.shuffle)
     },
-    setVolume(value: number) {
-      audio.setVolume(value)
+    async setVolume(value: number) {
       this.volume = value
+      if (this.sonicast) {
+        await this.setVolume(this.volume)
+        return
+      }
+      audio.setVolume(value)
       localStorage.setItem('player.volume', String(value))
     },
-    setPlaybackRate(value: number) {
+    async setPlaybackRate(value: number) {
       this.podcastPlaybackRate = value
+      if (this.sonicast) {
+        await this.setPlaybackRate(this.podcastPlaybackRate)
+        return
+      }
       localStorage.setItem('player.podcastPlaybackRate', String(value))
       if (this.track?.isPodcast) {
         audio.setPlaybackRate(value)
       }
     },
-    setShuffle(enable: boolean) {
+    async setShuffle(enable: boolean) {
       this.shuffle = enable
+      if (this.sonicast) {
+        await this.setShuffle(this.shuffle)
+        return
+      }
       localStorage.setItem('player.shuffle', String(enable))
     },
-    setPlaying() {
+    _setPlaying() {
       this.isPlaying = true
       if (mediaSession) {
         mediaSession.playbackState = 'playing'
       }
     },
-    setPaused() {
+    _setPaused() {
       this.isPlaying = false
       if (mediaSession) {
         mediaSession.playbackState = 'paused'
       }
     },
-    setQueue(queue: Track[]) {
+    _setQueue(queue: Track[]) {
       this.queue = queue
       this.queueIndex = -1
     },
-    setQueueIndex(index: number) {
+    _setQueueIndex(index: number) {
       if (!this.queue || this.queue.length === 0) {
         this.queueIndex = -1
         this.duration = 0
@@ -212,14 +303,19 @@ export const usePlayerStore = defineStore('player', {
         }
         return
       }
+
       index = Math.max(0, index)
       index = index < this.queue.length ? index : 0
       this.queueIndex = index
       this.scrobbled = false
       const track = this.queue[index]
       this.duration = track.duration
-      const next = (index + 1) % this.queue.length
-      audio.setBuffer(this.queue[next].url!)
+
+      if (!this.sonicast) {
+        const next = (index + 1) % this.queue.length
+        audio.setBuffer(this.queue[next].url!)
+      }
+
       if (mediaSession) {
         mediaSession.metadata = new MediaMetadata({
           title: track.title,
@@ -232,7 +328,26 @@ export const usePlayerStore = defineStore('player', {
   },
 })
 
-export function setupAudio(playerStore: ReturnType<typeof usePlayerStore>, mainStore: ReturnType<typeof useMainStore>, api: API) {
+export function setupSonicastEvents(playerStore: ReturnType<typeof usePlayerStore>, mainStore: ReturnType<typeof useMainStore>, api: API, sonicast: Sonicast) {
+  sonicast.onplayback = (ev) => {
+    playerStore.isPlaying = ev.playing
+    playerStore.currentTime = ev.position ?? 0
+    playerStore.duration = ev.duration ?? 0
+  }
+
+  sonicast.onplayqueue = (queue) => {
+    playerStore._setQueue(queue.tracks)
+    playerStore._setQueueIndex(queue.currentTrack)
+    playerStore.currentTime = queue.currentTrackPosition
+  }
+}
+
+export function setupAudio(playerStore: ReturnType<typeof usePlayerStore>, mainStore: ReturnType<typeof useMainStore>, api: API, sonicast?: Sonicast) {
+  if (sonicast) {
+    setupSonicastEvents(playerStore, mainStore, api, sonicast)
+    return
+  }
+
   audio.ontimeupdate = (value: number) => {
     playerStore.currentTime = value
   }
@@ -249,7 +364,7 @@ export function setupAudio(playerStore: ReturnType<typeof usePlayerStore>, mainS
     }
   }
   audio.onpause = () => {
-    playerStore.setPaused()
+    playerStore._setPaused()
   }
   audio.onstreamtitlechange = (value: string | null) => {
     playerStore.streamTitle = value
@@ -258,7 +373,7 @@ export function setupAudio(playerStore: ReturnType<typeof usePlayerStore>, mainS
     }
   }
   audio.onerror = (error: any) => {
-    playerStore.setPaused()
+    playerStore._setPaused()
     mainStore.setError(error)
   }
 
@@ -317,7 +432,9 @@ export function setupAudio(playerStore: ReturnType<typeof usePlayerStore>, mainS
       () => {
         const track = playerStore.track
         if (track && !track.isStream) {
-          return api.updateNowPlaying(track.id)
+          if (!sonicast) {
+            return api.updateNowPlaying(track.id)
+          }
         }
       })
 
@@ -334,7 +451,9 @@ export function setupAudio(playerStore: ReturnType<typeof usePlayerStore>, mainS
           const { id, isStream } = playerStore.track
           if (!isStream) {
             playerStore.scrobbled = true
-            return api.scrobble(id)
+            if (!sonicast) {
+              return api.scrobble(id)
+            }
           }
         }
       })
@@ -351,7 +470,9 @@ export function setupAudio(playerStore: ReturnType<typeof usePlayerStore>, mainS
       (_: any, [oldQueue]) => {
         if (oldQueue !== null) {
           lastSaved.value = Date.now()
-          return api.savePlayQueue(playerStore.queue!, playerStore.track, playerStore.currentTime)
+          if (!sonicast) {
+            return api.savePlayQueue(playerStore.queue!, playerStore.track, playerStore.currentTime)
+          }
         }
       })
 
@@ -362,7 +483,9 @@ export function setupAudio(playerStore: ReturnType<typeof usePlayerStore>, mainS
         const duration = now - lastSaved.value
         if (duration >= maxDuration) {
           lastSaved.value = now
-          return api.savePlayQueue(playerStore.queue!, playerStore.track, playerStore.currentTime)
+          if (!sonicast) {
+            return api.savePlayQueue(playerStore.queue!, playerStore.track, playerStore.currentTime)
+          }
         }
       })
   }

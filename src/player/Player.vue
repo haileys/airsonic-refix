@@ -218,17 +218,17 @@
       setVolume(volume: any) {
         return this.playerStore.setVolume(parseFloat(volume))
       },
-      toggleReplayGain() {
-        return this.playerStore.toggleReplayGain()
+      async toggleReplayGain() {
+        await this.playerStore.toggleReplayGain()
       },
-      setPlaybackRate(value: number) {
-        return this.playerStore.setPlaybackRate(value)
+      async setPlaybackRate(value: number) {
+        await this.playerStore.setPlaybackRate(value)
       },
-      toggleRepeat() {
-        return this.playerStore.toggleRepeat()
+      async toggleRepeat() {
+        await this.playerStore.toggleRepeat()
       },
-      toggleShuffle() {
-        return this.playerStore.toggleShuffle()
+      async toggleShuffle() {
+        await this.playerStore.toggleShuffle()
       },
       toggleFavourite() {
         return this.favouriteStore.toggle('track', this.track!.id)

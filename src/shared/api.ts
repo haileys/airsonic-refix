@@ -539,7 +539,7 @@ export class API {
     }
   }
 
-  private normalizeTrack(item: any): Track {
+  normalizeTrack(item: any): Track {
     const replayGain =
       Number.isFinite(item.replayGain?.trackGain) &&
       Number.isFinite(item.replayGain?.albumGain) &&
