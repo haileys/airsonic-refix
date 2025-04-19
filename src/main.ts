@@ -36,7 +36,7 @@ const auth = createAuth()
 const api = createApi(auth)
 const router = setupRouter(auth)
 
-const sonicast = new Sonicast(api, config.sonicastUrl)
+const sonicast = new Sonicast(api, config.sonicastUrl, auth)
 
 const pinia = createPinia()
   .use(({ store }) => {

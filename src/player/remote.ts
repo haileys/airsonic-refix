@@ -1,8 +1,7 @@
 import { API, PlayQueue, Track } from '@/shared/api'
 import { ReplayGainMode } from './audio'
-
-const GET = 'GET'
-const POST = 'POST'
+import { AuthService } from '@/auth/service'
+import { config } from '@/shared/config'
 
 export interface PlaybackEvent {
   playing: boolean,
@@ -14,6 +13,7 @@ export type PlaybackCallback = (ev: PlaybackEvent) => void;
 export type PlayQueueCallback = (queue: PlayQueue) => void;
 
 type Action<Param> = { param: Param, result: void };
+type Query<Data> = { param: void, result: Data };
 
 type CommandMap = {
   'play': Action<void>,
@@ -22,6 +22,19 @@ type CommandMap = {
   'skip-previous': Action<void>,
   'seek': Action<{ pos: number }>,
   'play-index': Action<{ index: number }>,
+  'reset-queue': Action<void>,
+  'clear-queue': Action<void>,
+  'add-to-queue': Action<{ tracks: string[] }>,
+  'set-next-in-queue': Action<{ tracks: string[] }>,
+  'queue': Query<PlayQueue>,
+  'play-track-list': Action<{ tracks: string[], index?: number, shuffle?: boolean }>,
+  'remove-from-queue': Action<{ index: number }>,
+  'shuffle-queue': Action<void>,
+  'replay-gain-mode': Action<{ mode: string }>,
+  'set-repeat': Action<{ repeat: boolean }>,
+  'set-shuffle': Action<{ shuffle: boolean }>,
+  'set-volume': Action<{ volume: number }>,
+  'set-playback-rate': Action< { rate: number }>,
 };
 
 type CommandName = keyof CommandMap;
@@ -73,28 +86,36 @@ export class Sonicast {
   public onplayback: PlaybackCallback | null = null
   public onplayqueue: PlayQueueCallback | null = null
 
-  constructor(api: API, baseUrl: string) {
+  constructor(api: API, baseUrl: string, auth: AuthService) {
     this.api = api
+
+    console.log(config)
 
     this.baseUrl = new URL(baseUrl)
     if (!this.baseUrl.pathname.endsWith('/')) {
       this.baseUrl.pathname += '/'
     }
 
-    this.websocket = new WebSocket(this.baseUrl + 'ws')
+    const websocketUrl = new URL(this.baseUrl + 'ws?' + auth.urlParams)
+    this.websocket = new WebSocket(websocketUrl)
     this.websocket.onmessage = (ev) => {
       const msg = JSON.parse(ev.data) as ServerMsg
+
+      if (!('playback' in msg)) {
+        // don't trace playback messages, they're too spammy
+        console.log('WebSocket RX:', ev.data)
+      }
+
       this.receiveServerMessage(msg)
     }
   }
 
   private receiveServerMessage(msg: ServerMsg) {
-    // console.log('WebSocket RX:', msg)
-
     if ('playback' in msg) {
       if (this.onplayback) {
         this.onplayback(msg.playback)
       }
+      return
     }
 
     if ('queue' in msg) {
@@ -115,35 +136,9 @@ export class Sonicast {
   }
 
   private async send(msg: ClientMsg) {
-    // console.log('WebSocket TX:', msg)
-    this.websocket.send(JSON.stringify(msg))
-  }
-
-  private async fetch(method: string, path: string, body?: object): Promise<object> {
-    const opts: RequestInit & { headers: any } = {
-      method,
-      headers: {
-        'content-type': 'application/json',
-      },
-    }
-
-    if (body) {
-      opts.headers['Content-Type'] = 'application/x-www-form-urlencoded'
-      opts.body = JSON.stringify(body)
-    }
-
-    const url = this.baseUrl + path
-    const response = await window.fetch(url, opts)
-
-    if (!response.ok) {
-      throw new Error(`${method} ${path} failed: ${response.status}`)
-    }
-
-    if (response.headers.get('content-type') === 'application/json') {
-      return await response.json()
-    }
-
-    return {}
+    const json = JSON.stringify(msg)
+    console.log('WebSocket TX:', json)
+    this.websocket.send(json)
   }
 
   private async command<Cmd extends CommandName>(
@@ -173,13 +168,13 @@ export class Sonicast {
   }
 
   async getPlayQueue(): Promise<PlayQueue> {
-    const queue = await this.fetch(GET, 'queue') as PlayQueue
+    const queue = await this.command('queue', undefined)
     this.normalizePlayQueueInPlace(queue)
     return queue
   }
 
   async playTrackList(tracks: Track[], opts: { index?: number, shuffle?: boolean }): Promise<void> {
-    await this.fetch(POST, 'play-track-list', {
+    await this.command('play-track-list', {
       tracks: tracks.map((t) => t.id),
       index: opts.index,
       shuffle: opts.shuffle,
@@ -187,60 +182,55 @@ export class Sonicast {
   }
 
   async playIndex(index: number): Promise<void> {
-    await this.fetch(POST, 'play-index', { index })
+    await this.command('play-index', { index })
   }
 
   async play(): Promise<void> {
     await this.command('play', undefined)
-    // await this.fetch(POST, 'play')
   }
 
   async pause(): Promise<void> {
     await this.command('pause', undefined)
-    // await this.fetch(POST, 'pause')
   }
 
   async next(): Promise<void> {
     await this.command('skip-next', undefined)
-    // await this.fetch(POST, 'next')
   }
 
   async previous(): Promise<void> {
     await this.command('skip-previous', undefined)
-    // await this.fetch(POST, 'previous')
   }
 
   async seek(pos: number): Promise<void> {
     await this.command('seek', { pos })
-    // await this.fetch(POST, 'seek', { pos })
   }
 
   async resetQueue(): Promise<void> {
-    await this.fetch(POST, 'reset-queue')
+    await this.command('reset-queue', undefined)
   }
 
   async clearQueue(): Promise<void> {
-    await this.fetch(POST, 'clear-queue')
+    await this.command('clear-queue', undefined)
   }
 
   async addToQueue(tracks: Track[]): Promise<void> {
-    await this.fetch(POST, 'add-to-queue', {
+    await this.command('add-to-queue', {
       tracks: tracks.map((t) => t.id)
     })
   }
 
   async setNextInQueue(tracks: Track[]): Promise<void> {
-    await this.fetch(POST, 'set-next-in-queue', {
+    await this.command('set-next-in-queue', {
       tracks: tracks.map((t) => t.id)
     })
   }
 
   async removeFromQueue(index: number): Promise<void> {
-    await this.fetch(POST, 'remove-from-queue', { index })
+    await this.command('remove-from-queue', { index })
   }
 
   async shuffleQueue(): Promise<void> {
-    await this.fetch(POST, 'shuffle-queue')
+    await this.command('shuffle-queue', undefined)
   }
 
   async replayGainMode(mode: ReplayGainMode): Promise<void> {
@@ -255,22 +245,22 @@ export class Sonicast {
       return
     }
 
-    await this.fetch(POST, 'replay-gain-mode', { mode: modeString })
+    await this.command('replay-gain-mode', { mode: modeString })
   }
 
   async setRepeat(repeat: boolean): Promise<void> {
-    await this.fetch(POST, 'set-repeat', { repeat })
+    await this.command('set-repeat', { repeat })
   }
 
   async setShuffle(shuffle: boolean): Promise<void> {
-    await this.fetch(POST, 'set-shuffle', { shuffle })
+    await this.command('set-shuffle', { shuffle })
   }
 
   async setVolume(volume: number): Promise<void> {
-    await this.fetch(POST, 'set-volume', { volume })
+    await this.command('set-volume', { volume })
   }
 
   async setPlaybackRate(rate: number): Promise<void> {
-    await this.fetch(POST, 'set-playback-rate', { rate })
+    await this.command('set-playback-rate', { rate })
   }
 }
