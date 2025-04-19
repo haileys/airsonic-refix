@@ -89,7 +89,7 @@ export class Sonicast {
   }
 
   private receiveServerMessage(msg: ServerMsg) {
-    console.log('WebSocket RX:', msg)
+    // console.log('WebSocket RX:', msg)
 
     if ('playback' in msg) {
       if (this.onplayback) {
@@ -115,7 +115,7 @@ export class Sonicast {
   }
 
   private async send(msg: ClientMsg) {
-    console.log('WebSocket TX:', msg)
+    // console.log('WebSocket TX:', msg)
     this.websocket.send(JSON.stringify(msg))
   }
 
