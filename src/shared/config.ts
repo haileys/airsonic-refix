@@ -6,24 +6,14 @@ export type SonicastTarget = {
 export interface Config {
   serverUrl: string,
   sonicastTargets: SonicastTarget[],
+  radioCoverArt: { [id: string]: string },
 }
 
 const env = (window as any).env
+const globalConfig = (window as any).config
 
 export const config: Config = {
   serverUrl: env?.SERVER_URL,
-  sonicastTargets: parseSonicastTargets(env?.SONICAST_TARGETS),
-}
-
-function parseSonicastTargets(json?: string): SonicastTarget[] {
-  if (!json) {
-    return []
-  }
-
-  try {
-    return JSON.parse(json)
-  } catch (err) {
-    console.warn('parsing env.SONICAST_TARGETS:', err)
-    return []
-  }
+  sonicastTargets: globalConfig?.sonicastTargets ?? [],
+  radioCoverArt: globalConfig?.radioCoverArt ?? {},
 }
