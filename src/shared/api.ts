@@ -553,7 +553,7 @@ export class API {
         ? item.replayGain
         : null
 
-    return {
+    const track = {
       id: item.id,
       title: item.title,
       duration: item.duration,
@@ -568,6 +568,13 @@ export class API {
       image: this.getCoverArtUrl(item),
       replayGain,
     }
+
+    if (item.id.startsWith('radio-')) {
+      const radioId = item.id.replace(/^radio-/, '')
+      track.image = config.radioCoverArt[radioId] ?? null
+    }
+
+    return track
   }
 
   private normalizeGenres(item: any): Genre[] {
