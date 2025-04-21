@@ -1,6 +1,7 @@
 import { AuthService } from '@/auth/service'
 import { map, max, orderBy, sumBy, uniqBy } from 'lodash-es'
 import { toQueryString } from '@/shared/utils'
+import { config } from './config'
 
 export type AlbumSort =
   'a-z' |
@@ -77,6 +78,7 @@ export interface RadioStation {
   title: string
   description: string
   url: string
+  image?: string
 }
 
 export interface PodcastEpisode {
@@ -524,9 +526,12 @@ export class API {
   }
 
   private normalizeRadioStation(item: any): Track & RadioStation {
+    const image = config.radioCoverArt[item.id] ?? null
+
     return {
       id: `radio-${item.id}`,
       title: item.name,
+      image,
       // Workaround: airsonic-advanced does not use correct name
       description: item.homepageUrl || item.homePageUrl,
       album: item.name,
