@@ -141,15 +141,15 @@ export const usePlayerStore = defineStore('player', {
       this._setPlaying()
       await audio.changeTrack(this.track!)
     },
-    async seek(value: number) {
+    async seek(pos: number) {
       if (this.sonicast) {
         if (isFinite(this.duration)) {
-          await this.sonicast.seek(this.duration * value)
+          await sonicast.seek(pos)
         }
         return
       }
       if (isFinite(this.duration)) {
-        await audio.seek(this.duration * value)
+        await audio.seek(pos)
       }
     },
     async loadQueue() {
