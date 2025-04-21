@@ -5,6 +5,8 @@ import { API, Track } from '@/shared/api'
 import { AudioController, ReplayGainMode } from '@/player/audio'
 import { Sonicast } from '@/player/remote'
 import { useMainStore } from '@/shared/store'
+import { AuthService } from '@/auth/service'
+import { toValue } from '@vueuse/core'
 
 localStorage.removeItem('player.mute')
 localStorage.removeItem('queue')
@@ -14,7 +16,9 @@ const storedVolume = parseFloat(localStorage.getItem('player.volume') || '1.0')
 const storedReplayGainMode = parseInt(localStorage.getItem('player.replayGainMode') ?? '0')
 const storedPodcastPlaybackRate = parseFloat(localStorage.getItem('player.podcastPlaybackRate') || '1.0')
 const mediaSession: MediaSession | undefined = navigator.mediaSession
+
 const audio = new AudioController()
+let sonicast: Sonicast | null = null
 
 export const usePlayerStore = defineStore('player', {
   state: () => ({
@@ -59,25 +63,25 @@ export const usePlayerStore = defineStore('player', {
   },
   actions: {
     async playNow(tracks: Track[]) {
-      if (this.sonicast) {
-        await this.sonicast.playTrackList(tracks, { index: 0, shuffle: false })
+      if (sonicast) {
+        await sonicast.playTrackList(tracks, { index: 0, shuffle: false })
         return
       }
       this.setShuffle(false)
       await this.playTrackList(tracks, 0)
     },
     async shuffleNow(tracks: Track[]) {
-      if (this.sonicast) {
-        await this.sonicast.playTrackList(tracks, { shuffle: true })
+      if (sonicast) {
+        await sonicast.playTrackList(tracks, { shuffle: true })
         return
       }
       this.setShuffle(true)
       await this.playTrackList(tracks)
     },
     async playTrackListIndex(index: number) {
-      if (this.sonicast) {
+      if (sonicast) {
         // TODO translate this into an mpd id client side to fix race condition
-        await this.sonicast.playIndex(index)
+        await sonicast.playIndex(index)
         return
       }
       this._setQueueIndex(index)
@@ -85,8 +89,8 @@ export const usePlayerStore = defineStore('player', {
       await audio.changeTrack({ ...this.track, playbackRate: this.playbackRate })
     },
     async playTrackList(tracks: Track[], index?: number) {
-      if (this.sonicast) {
-        await this.sonicast.playTrackList(tracks, { index })
+      if (sonicast) {
+        await sonicast.playTrackList(tracks, { index })
         return
       }
       if (index == null) {
@@ -106,16 +110,16 @@ export const usePlayerStore = defineStore('player', {
     },
     async resume() {
       this._setPlaying()
-      if (this.sonicast) {
-        await this.sonicast.play()
+      if (sonicast) {
+        await sonicast.play()
       } else {
         await audio.resume()
       }
     },
     async pause() {
       this._setPaused()
-      if (this.sonicast) {
-        await this.sonicast.pause()
+      if (sonicast) {
+        await sonicast.pause()
       } else {
         audio.pause()
       }
@@ -124,8 +128,8 @@ export const usePlayerStore = defineStore('player', {
       return this.isPlaying ? await this.pause() : await this.resume()
     },
     async next() {
-      if (this.sonicast) {
-        await this.sonicast.next()
+      if (sonicast) {
+        await sonicast.next()
         return
       }
       this._setQueueIndex(this.queueIndex + 1)
@@ -133,8 +137,8 @@ export const usePlayerStore = defineStore('player', {
       await audio.changeTrack({ ...this.track, playbackRate: this.playbackRate })
     },
     async previous() {
-      if (this.sonicast) {
-        await this.sonicast.previous()
+      if (sonicast) {
+        await sonicast.previous()
         return
       }
       this._setQueueIndex(audio.currentTime() > 3 ? this.queueIndex : this.queueIndex - 1)
@@ -142,7 +146,7 @@ export const usePlayerStore = defineStore('player', {
       await audio.changeTrack(this.track!)
     },
     async seek(pos: number) {
-      if (this.sonicast) {
+      if (sonicast) {
         if (isFinite(this.duration)) {
           await sonicast.seek(pos)
         }
@@ -153,8 +157,8 @@ export const usePlayerStore = defineStore('player', {
       }
     },
     async loadQueue() {
-      if (this.sonicast) {
-        const { tracks, currentTrack, currentTrackPosition } = await this.sonicast.getPlayQueue()
+      if (sonicast) {
+        const { tracks, currentTrack, currentTrackPosition } = await sonicast.getPlayQueue()
         this._setQueue(tracks)
         this._setQueueIndex(currentTrack)
         this.currentTime = currentTrackPosition
@@ -168,8 +172,8 @@ export const usePlayerStore = defineStore('player', {
       await audio.seek(currentTrackPosition)
     },
     async resetQueue() {
-      if (this.sonicast) {
-        await this.sonicast.resetQueue()
+      if (sonicast) {
+        await sonicast.resetQueue()
         return
       }
       this._setQueueIndex(0)
@@ -177,8 +181,8 @@ export const usePlayerStore = defineStore('player', {
       await audio.changeTrack({ ...this.track, paused: true, playbackRate: this.playbackRate })
     },
     async clearQueue() {
-      if (this.sonicast) {
-        await this.sonicast.clearQueue()
+      if (sonicast) {
+        await sonicast.clearQueue()
         return
       }
       if (!this.queue) {
@@ -191,26 +195,26 @@ export const usePlayerStore = defineStore('player', {
         this._setQueue([])
         this._setQueueIndex(-1)
         this._setPaused()
-        await audio.changeTrack({ })
+        await audio.stop()
       }
     },
     async addToQueue(tracks: Track[]) {
-      if (this.sonicast) {
-        await this.sonicast.addToQueue(tracks)
+      if (sonicast) {
+        await sonicast.addToQueue(tracks)
         return
       }
       this.queue?.push(...this.shuffle ? shuffled(tracks) : tracks)
     },
     async setNextInQueue(tracks: Track[]) {
-      if (this.sonicast) {
-        await this.sonicast.setNextInQueue(tracks)
+      if (sonicast) {
+        await sonicast.setNextInQueue(tracks)
         return
       }
       this.queue?.splice(this.queueIndex + 1, 0, ...this.shuffle ? shuffled(tracks) : tracks)
     },
     async removeFromQueue(index: number) {
-      if (this.sonicast) {
-        await this.sonicast.removeFromQueue(index)
+      if (sonicast) {
+        await sonicast.removeFromQueue(index)
         return
       }
       this.queue?.splice(index, 1)
@@ -219,8 +223,8 @@ export const usePlayerStore = defineStore('player', {
       }
     },
     async shuffleQueue() {
-      if (this.sonicast) {
-        await this.sonicast.shuffleQueue()
+      if (sonicast) {
+        await sonicast.shuffleQueue()
         return
       }
       if (this.queue && this.queue.length > 0) {
@@ -231,8 +235,8 @@ export const usePlayerStore = defineStore('player', {
     async toggleReplayGain() {
       const mode = (this.replayGainMode + 1) % ReplayGainMode._Length
       this.replayGainMode = mode
-      if (this.sonicast) {
-        await this.sonicast.replayGainMode(this.replayGainMode)
+      if (sonicast) {
+        await sonicast.replayGainMode(this.replayGainMode)
         return
       }
       audio.setReplayGainMode(mode)
@@ -240,8 +244,8 @@ export const usePlayerStore = defineStore('player', {
     },
     async toggleRepeat() {
       this.repeat = !this.repeat
-      if (this.sonicast) {
-        await this.sonicast.setRepeat(this.repeat)
+      if (sonicast) {
+        await sonicast.setRepeat(this.repeat)
         return
       }
       localStorage.setItem('player.repeat', String(this.repeat))
@@ -251,8 +255,8 @@ export const usePlayerStore = defineStore('player', {
     },
     async setVolume(value: number) {
       this.volume = value
-      if (this.sonicast) {
-        await this.sonicast.setVolume(this.volume)
+      if (sonicast) {
+        await sonicast.setVolume(this.volume)
         return
       }
       audio.setVolume(value)
@@ -260,8 +264,8 @@ export const usePlayerStore = defineStore('player', {
     },
     async setPlaybackRate(value: number) {
       this.podcastPlaybackRate = value
-      if (this.sonicast) {
-        await this.sonicast.setPlaybackRate(this.podcastPlaybackRate)
+      if (sonicast) {
+        await sonicast.setPlaybackRate(this.podcastPlaybackRate)
         return
       }
       localStorage.setItem('player.podcastPlaybackRate', String(value))
@@ -271,8 +275,8 @@ export const usePlayerStore = defineStore('player', {
     },
     async setShuffle(enable: boolean) {
       this.shuffle = enable
-      if (this.sonicast) {
-        await this.sonicast.setShuffle(this.shuffle)
+      if (sonicast) {
+        await sonicast.setShuffle(this.shuffle)
         return
       }
       localStorage.setItem('player.shuffle', String(enable))
@@ -311,7 +315,7 @@ export const usePlayerStore = defineStore('player', {
       const track = this.queue[index]
       this.duration = track.duration
 
-      if (!this.sonicast) {
+      if (!sonicast) {
         const next = (index + 1) % this.queue.length
         audio.setBuffer(this.queue[next].url!)
       }
@@ -328,7 +332,10 @@ export const usePlayerStore = defineStore('player', {
   },
 })
 
-export function setupSonicastEvents(playerStore: ReturnType<typeof usePlayerStore>, mainStore: ReturnType<typeof useMainStore>, api: API, sonicast: Sonicast) {
+type PlayerStore = ReturnType<typeof usePlayerStore>
+type MainStore = ReturnType<typeof useMainStore>
+
+function setupSonicastEvents(playerStore: PlayerStore, sonicast: Sonicast) {
   sonicast.onplayback = (ev) => {
     playerStore.isPlaying = ev.playing
     playerStore.currentTime = ev.position ?? 0
@@ -342,12 +349,15 @@ export function setupSonicastEvents(playerStore: ReturnType<typeof usePlayerStor
   }
 }
 
-export function setupAudio(playerStore: ReturnType<typeof usePlayerStore>, mainStore: ReturnType<typeof useMainStore>, api: API, sonicast?: Sonicast) {
-  if (sonicast) {
-    setupSonicastEvents(playerStore, mainStore, api, sonicast)
-    return
-  }
+function disposeSonicastEvents(sonicast: Sonicast) {
+  sonicast.onplayback = null
+  sonicast.onplayqueue = null
+}
 
+function setupAudioEvents(
+  playerStore: PlayerStore,
+  mainStore: MainStore,
+) {
   audio.ontimeupdate = (value: number) => {
     playerStore.currentTime = value
   }
@@ -376,7 +386,55 @@ export function setupAudio(playerStore: ReturnType<typeof usePlayerStore>, mainS
     playerStore._setPaused()
     mainStore.setError(error)
   }
+}
 
+function disposeAudioEvents() {
+  const noop = () => { /* noop */ }
+  audio.ontimeupdate = noop
+  audio.ondurationchange = noop
+  audio.onended = noop
+  audio.onpause = noop
+  audio.onstreamtitlechange = noop
+  audio.onerror = noop
+}
+
+function setupMediaSession(
+  playerStore: PlayerStore,
+  mediaSession: MediaSession,
+) {
+  mediaSession.setActionHandler('play', () => {
+    playerStore.resume()
+  })
+  mediaSession.setActionHandler('pause', () => {
+    playerStore.pause()
+  })
+  mediaSession.setActionHandler('nexttrack', () => {
+    playerStore.next()
+  })
+  mediaSession.setActionHandler('previoustrack', () => {
+    playerStore.previous()
+  })
+  mediaSession.setActionHandler('stop', () => {
+    playerStore.pause()
+  })
+  mediaSession.setActionHandler('seekto', (details) => {
+    if (details.seekTime) {
+      playerStore.seek(details.seekTime)
+    }
+  })
+  mediaSession.setActionHandler('seekforward', (details) => {
+    const offset = details.seekOffset || 10
+    const pos = Math.min(playerStore.currentTime + offset, playerStore.duration)
+    playerStore.seek(pos)
+  })
+  mediaSession.setActionHandler('seekbackward', (details) => {
+    const offset = details.seekOffset || 10
+    const pos = Math.max(playerStore.currentTime - offset, 0)
+    playerStore.seek(pos)
+  })
+}
+
+function setupAudioState(playerStore: PlayerStore) {
   audio.setReplayGainMode(storedReplayGainMode)
   audio.setVolume(storedVolume)
 
@@ -385,108 +443,113 @@ export function setupAudio(playerStore: ReturnType<typeof usePlayerStore>, mainS
     audio.changeTrack({ ...track, paused: true })
   }
   audio.setPlaybackRate(playerStore.playbackRate)
+}
+
+export function setupPlayer(
+  playerStore: PlayerStore,
+  mainStore: MainStore,
+  auth: AuthService,
+  api: API,
+) {
+  // setup play target based on mainStore.sonicastUrl
+  watch(
+    () => mainStore.sonicastUrl,
+    async(sonicastUrl) => {
+      const queue = toValue(playerStore.queue)
+      const queueIndex = toValue(playerStore.queueIndex)
+      const isPlaying = toValue(playerStore.isPlaying)
+      const currentTime = toValue(playerStore.currentTime)
+      console.log({ queue, queueIndex, isPlaying, currentTime })
+
+      if (sonicast) {
+        disposeSonicastEvents(sonicast)
+        sonicast.clearQueue()
+        sonicast = null
+      } else {
+        audio.stop()
+        disposeAudioEvents()
+      }
+
+      if (sonicastUrl) {
+        sonicast = new Sonicast(api, sonicastUrl, auth)
+        setupSonicastEvents(playerStore, sonicast)
+      } else {
+        setupAudioEvents(playerStore, mainStore)
+        setupAudioState(playerStore)
+      }
+
+      if (isPlaying && queue) {
+        await playerStore.playTrackList(queue, queueIndex)
+        await playerStore.seek(currentTime)
+      }
+    },
+    { immediate: true }
+  )
 
   if (mediaSession) {
-    mediaSession.setActionHandler('play', () => {
-      playerStore.resume()
-    })
-    mediaSession.setActionHandler('pause', () => {
-      playerStore.pause()
-    })
-    mediaSession.setActionHandler('nexttrack', () => {
-      playerStore.next()
-    })
-    mediaSession.setActionHandler('previoustrack', () => {
-      playerStore.previous()
-    })
-    mediaSession.setActionHandler('stop', () => {
-      playerStore.pause()
-    })
-    mediaSession.setActionHandler('seekto', (details) => {
-      if (details.seekTime) {
-        audio.seek(details.seekTime)
+    setupMediaSession(playerStore, mediaSession)
+  }
+
+  // Update now playing
+  watch(
+    () => playerStore.trackId,
+    () => {
+      const track = playerStore.track
+      if (track && !track.isStream) {
+        if (!sonicast) {
+          return api.updateNowPlaying(track.id)
+        }
       }
     })
-    mediaSession.setActionHandler('seekforward', (details) => {
-      const offset = details.seekOffset || 10
-      audio.seek(Math.min(audio.currentTime() + offset, audio.duration()))
+
+  // Scrobble
+  watch(
+    () => playerStore.currentTime,
+    () => {
+      if (
+        playerStore.track &&
+        playerStore.scrobbled === false &&
+        playerStore.duration > 30 &&
+        playerStore.currentTime / playerStore.duration > 0.7
+      ) {
+        const { id, isStream } = playerStore.track
+        if (!isStream) {
+          playerStore.scrobbled = true
+          if (!sonicast) {
+            return api.scrobble(id)
+          }
+        }
+      }
     })
-    mediaSession.setActionHandler('seekbackward', (details) => {
-      const offset = details.seekOffset || 10
-      audio.seek(Math.max(audio.currentTime() - offset, 0))
+
+  // Save play queue
+  const maxDuration = 10_000
+  const lastSaved = ref(Date.now())
+
+  watch(
+    () => [
+      playerStore.queue,
+      playerStore.queueIndex,
+    ],
+    (_: any, [oldQueue]) => {
+      if (oldQueue !== null) {
+        lastSaved.value = Date.now()
+        if (!sonicast) {
+          return api.savePlayQueue(playerStore.queue!, playerStore.track, playerStore.currentTime)
+        }
+      }
     })
-    // FIXME
-    // function updatePositionState() {
-    //   if (mediaSession && mediaSession.setPositionState) {
-    //     mediaSession.setPositionState({
-    //       duration: audio.duration || 0,
-    //       playbackRate: audio.playbackRate,
-    //       position: audio.currentTime,
-    //     });
-    //   }
-    // }
 
-    // Update now playing
-    watch(
-      () => playerStore.trackId,
-      () => {
-        const track = playerStore.track
-        if (track && !track.isStream) {
-          if (!sonicast) {
-            return api.updateNowPlaying(track.id)
-          }
+  watch(
+    () => [playerStore.currentTime],
+    () => {
+      const now = Date.now()
+      const duration = now - lastSaved.value
+      if (duration >= maxDuration) {
+        lastSaved.value = now
+        if (!sonicast) {
+          return api.savePlayQueue(playerStore.queue!, playerStore.track, playerStore.currentTime)
         }
-      })
-
-    // Scrobble
-    watch(
-      () => playerStore.currentTime,
-      () => {
-        if (
-          playerStore.track &&
-          playerStore.scrobbled === false &&
-          playerStore.duration > 30 &&
-          playerStore.currentTime / playerStore.duration > 0.7
-        ) {
-          const { id, isStream } = playerStore.track
-          if (!isStream) {
-            playerStore.scrobbled = true
-            if (!sonicast) {
-              return api.scrobble(id)
-            }
-          }
-        }
-      })
-
-    // Save play queue
-    const maxDuration = 10_000
-    const lastSaved = ref(Date.now())
-
-    watch(
-      () => [
-        playerStore.queue,
-        playerStore.queueIndex,
-      ],
-      (_: any, [oldQueue]) => {
-        if (oldQueue !== null) {
-          lastSaved.value = Date.now()
-          if (!sonicast) {
-            return api.savePlayQueue(playerStore.queue!, playerStore.track, playerStore.currentTime)
-          }
-        }
-      })
-
-    watch(
-      () => [playerStore.currentTime],
-      () => {
-        const now = Date.now()
-        const duration = now - lastSaved.value
-        if (duration >= maxDuration) {
-          lastSaved.value = now
-          if (!sonicast) {
-            return api.savePlayQueue(playerStore.queue!, playerStore.track, playerStore.currentTime)
-          }
-        }
-      })
-  }
+      }
+    })
 }

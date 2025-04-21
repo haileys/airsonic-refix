@@ -1,7 +1,6 @@
 import { API, PlayQueue, Track } from '@/shared/api'
 import { ReplayGainMode } from './audio'
 import { AuthService } from '@/auth/service'
-import { config } from '@/shared/config'
 
 export interface PlaybackEvent {
   playing: boolean,
@@ -76,37 +75,39 @@ type ServerMsg =
   | { response: Response }
   ;
 
+function websocketUrl(baseUrl: string, auth: AuthService) {
+  const url = new URL(baseUrl)
+  if (!url.pathname.endsWith('/')) {
+    url.pathname += '/'
+  }
+
+  return new URL(url + 'ws?' + auth.urlParams)
+}
+
 export class Sonicast {
   private api: API
-  private baseUrl: URL
   private commandSeq = 0
+  private awaitingSend: string[] = []
   private awaitingResponse: Map<number, (_: Response) => void> = new Map()
-  private websocket: WebSocket
+  private websocketUrl: URL
+  private websocket: WebSocket | null = null
+  private disposing = false
 
   public onplayback: PlaybackCallback | null = null
   public onplayqueue: PlayQueueCallback | null = null
 
   constructor(api: API, baseUrl: string, auth: AuthService) {
     this.api = api
+    this.websocketUrl = websocketUrl(baseUrl, auth)
 
-    console.log(config)
+    this.connectWebsocket()
+  }
 
-    this.baseUrl = new URL(baseUrl)
-    if (!this.baseUrl.pathname.endsWith('/')) {
-      this.baseUrl.pathname += '/'
-    }
+  dispose() {
+    this.disposing = true
 
-    const websocketUrl = new URL(this.baseUrl + 'ws?' + auth.urlParams)
-    this.websocket = new WebSocket(websocketUrl)
-    this.websocket.onmessage = (ev) => {
-      const msg = JSON.parse(ev.data) as ServerMsg
-
-      if (!('playback' in msg)) {
-        // don't trace playback messages, they're too spammy
-        console.log('WebSocket RX:', ev.data)
-      }
-
-      this.receiveServerMessage(msg)
+    if (this.websocket) {
+      this.websocket.close()
     }
   }
 
@@ -135,10 +136,52 @@ export class Sonicast {
     }
   }
 
+  private connectWebsocket() {
+    if (this.disposing) {
+      return
+    }
+
+    this.websocket = new WebSocket(this.websocketUrl)
+    this.websocket.onopen = () => this.websocketDidOpen()
+    this.websocket.onclose = () => this.websocketDidClose()
+    this.websocket.onmessage = (ev) => this.websocketDidReceiveMessage(ev)
+  }
+
+  private websocketDidOpen() {
+    const messages = this.awaitingSend
+    this.awaitingSend = []
+
+    for (const message of messages) {
+      this.websocket!.send(message)
+    }
+  }
+
+  private websocketDidReceiveMessage(ev: MessageEvent) {
+    const msg = JSON.parse(ev.data) as ServerMsg
+
+    if (!('playback' in msg)) {
+      // don't trace playback messages, they're too spammy
+      console.log('WebSocket RX:', ev.data)
+    }
+
+    this.receiveServerMessage(msg)
+  }
+
+  private websocketDidClose() {
+    this.websocket = null
+
+    // reconnect websocket after a small delay if it ever closes:
+    setTimeout(() => this.connectWebsocket(), 500)
+  }
+
   private async send(msg: ClientMsg) {
     const json = JSON.stringify(msg)
     console.log('WebSocket TX:', json)
-    this.websocket.send(json)
+    if (this.websocket?.readyState === WebSocket.OPEN) {
+      this.websocket.send(json)
+    } else {
+      this.awaitingSend.push(json)
+    }
   }
 
   private async command<Cmd extends CommandName>(
