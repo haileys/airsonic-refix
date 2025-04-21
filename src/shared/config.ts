@@ -13,7 +13,7 @@ const env = (window as any).env
 const globalConfig = (window as any).config
 
 export const config: Config = {
-  serverUrl: env?.SERVER_URL,
+  serverUrl: globalConfig?.serverUrl ?? env?.SERVER_URL ?? '',
   sonicastTargets: globalConfig?.sonicastTargets ?? [],
   radioCoverArt: globalConfig?.radioCoverArt ?? {},
 }
