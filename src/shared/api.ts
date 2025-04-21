@@ -553,6 +553,8 @@ export class API {
         ? item.replayGain
         : null
 
+    const isRadio = item.id.startsWith('radio-')
+
     const track = {
       id: item.id,
       title: item.title,
@@ -567,9 +569,10 @@ export class API {
       url: this.getStreamUrl(item.id),
       image: this.getCoverArtUrl(item),
       replayGain,
+      isStream: isRadio,
     }
 
-    if (item.id.startsWith('radio-')) {
+    if (isRadio) {
       const radioId = item.id.replace(/^radio-/, '')
       track.image = config.radioCoverArt[radioId] ?? null
     }

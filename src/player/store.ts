@@ -119,7 +119,11 @@ export const usePlayerStore = defineStore('player', {
     async pause() {
       this._setPaused()
       if (sonicast) {
-        await sonicast.pause()
+        if (this.track?.isStream) {
+          await sonicast.stop()
+        } else {
+          await sonicast.pause()
+        }
       } else {
         audio.pause()
       }

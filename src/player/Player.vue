@@ -28,7 +28,7 @@
             <Icon icon="skip-start" />
           </b-button>
           <b-button variant="link" size="lg" class="m-2" @click="playPause">
-            <Icon :icon="isPlaying ? 'pause' : 'play'" />
+            <Icon :icon="playPauseIcon" />
           </b-button>
           <b-button variant="link" class="m-2" @click="next">
             <Icon icon="skip-end" />
@@ -161,6 +161,20 @@
     computed: {
       isPlaying() {
         return this.playerStore.isPlaying
+      },
+      isStream() {
+        return this.playerStore.track?.isStream ?? false
+      },
+      playPauseIcon() {
+        if (this.isPlaying) {
+          if (this.isStream) {
+            return 'stop'
+          } else {
+            return 'pause'
+          }
+        } else {
+          return 'play'
+        }
       },
       volume() {
         return this.playerStore.volume

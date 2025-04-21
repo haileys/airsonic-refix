@@ -46,6 +46,7 @@
   import iconSkipEnd from '@iconify-icons/bi/skip-end-fill'
   import iconSkipStart from '@iconify-icons/bi/skip-start-fill'
   import iconStack from '@iconify-icons/bi/stack'
+  import iconStop from '@iconify-icons/bi/stop-fill'
   import iconThreeDotsVertical from '@iconify-icons/bi/three-dots-vertical'
   import iconVolume from '@iconify-icons/bi/volume-up-fill'
   import iconX from '@iconify-icons/bi/x'
@@ -80,6 +81,7 @@
     'skip-end': iconSkipEnd.body,
     'skip-start': iconSkipStart.body,
     stack: iconStack.body,
+    stop: iconStop.body,
     'three-dots-vertical': iconThreeDotsVertical.body,
     volume: iconVolume.body,
     x: iconX.body,

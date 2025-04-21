@@ -26,6 +26,7 @@ type Query<Data> = { param: void, result: Data };
 type CommandMap = {
   'play': Action<void>,
   'pause': Action<void>,
+  'stop': Action<void>,
   'skip-next': Action<void>,
   'skip-previous': Action<void>,
   'seek': Action<{ pos: number }>,
@@ -259,6 +260,10 @@ export class Sonicast {
 
   async pause(): Promise<void> {
     await this.command('pause', undefined)
+  }
+
+  async stop(): Promise<void> {
+    await this.command('stop', undefined)
   }
 
   async next(): Promise<void> {
