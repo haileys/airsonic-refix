@@ -30,6 +30,15 @@
             <template #title>
               <span class="title">{{ item.title }}</span>
             </template>
+            <template #context-menu>
+              <ContextMenuItem icon="edit" @click.stop="openEditModal(item)">
+                Edit
+              </ContextMenuItem>
+              <b-dropdown-divider />
+              <ContextMenuItem icon="x" variant="danger" @click.stop="deleteRadioStation(item)">
+                Delete
+              </ContextMenuItem>
+            </template>
           </Tile>
         </Tiles>
       </template>
