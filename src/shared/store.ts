@@ -7,7 +7,7 @@ export const useMainStore = defineStore('main', {
     username: null as null | string,
     server: null as null | string,
     error: null as null | Error,
-    sonicastUrl: null as null | string,
+    sonicastUrl: null as null | URL,
     menuVisible: false,
     artistAlbumSortOrder: useLocalStorage<'desc' | 'asc'>('settings.artistAlbumSortOrder', 'desc')
   }),

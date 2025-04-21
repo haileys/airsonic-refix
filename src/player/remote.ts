@@ -86,7 +86,7 @@ type ServerMsg =
   | { response: Response }
   ;
 
-function websocketUrl(baseUrl: string, auth: AuthService) {
+function websocketUrl(baseUrl: URL, auth: AuthService) {
   const url = new URL(baseUrl)
   if (!url.pathname.endsWith('/')) {
     url.pathname += '/'
@@ -107,7 +107,7 @@ export class Sonicast {
   public onplayback: PlaybackCallback | null = null
   public onplayqueue: PlayQueueCallback | null = null
 
-  constructor(api: API, baseUrl: string, auth: AuthService) {
+  constructor(api: API, baseUrl: URL, auth: AuthService) {
     this.api = api
     this.websocketUrl = websocketUrl(baseUrl, auth)
 

@@ -492,32 +492,45 @@ export function setupPlayer(
   auth: AuthService,
   api: API,
 ) {
+  async function setupNewPlayTarget(sonicastUrl: URL | null) {
+    if (sonicast) {
+      disposeSonicastEvents(sonicast)
+      sonicast.clearQueue()
+      sonicast = null
+    } else {
+      audio.stop()
+      disposeAudioEvents()
+    }
+
+    if (sonicastUrl) {
+      sonicast = new Sonicast(api, sonicastUrl, auth)
+      setupSonicastEvents(playerStore, sonicast)
+    } else {
+      setupAudioEvents(playerStore, mainStore)
+      setupAudioState(playerStore)
+    }
+  }
+
+  async function changePlayTarget(
+    sonicastUrl: URL | null,
+    transferPlayerState: boolean,
+  ) {
+    const playerState = await playerStore.unloadPlayerState()
+
+    await setupNewPlayTarget(sonicastUrl)
+
+    if (transferPlayerState) {
+      await playerStore.loadPlayerState(playerState)
+    } else if (sonicastUrl) {
+      await playerStore.loadQueue()
+    }
+  }
+
   // setup play target based on mainStore.sonicastUrl
   watch(
     () => mainStore.sonicastUrl,
-    async(sonicastUrl) => {
-      console.log('hello...')
-      const playerState = await playerStore.unloadPlayerState()
-      console.log('ok...')
-
-      if (sonicast) {
-        disposeSonicastEvents(sonicast)
-        sonicast.clearQueue()
-        sonicast = null
-      } else {
-        audio.stop()
-        disposeAudioEvents()
-      }
-
-      if (sonicastUrl) {
-        sonicast = new Sonicast(api, sonicastUrl, auth)
-        setupSonicastEvents(playerStore, sonicast)
-      } else {
-        setupAudioEvents(playerStore, mainStore)
-        setupAudioState(playerStore)
-      }
-
-      await playerStore.loadPlayerState(playerState)
+    (sonicastUrl) => {
+      changePlayTarget(sonicastUrl, playerStore.isPlaying)
     },
     { immediate: true }
   )
