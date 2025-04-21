@@ -7,13 +7,13 @@
   </b-dropdown-item-button>
 </template>
 <script lang="ts">
-  import { defineComponent, PropType } from 'vue'
+  import { defineComponent } from 'vue'
   import { useMainStore } from '@/shared/store'
 
   export default defineComponent({
     props: {
       name: { type: String, required: true },
-      url: { type: [String, null] as PropType<string | null>, required: true },
+      url: { type: String, default: null },
     },
     setup() {
       return {
