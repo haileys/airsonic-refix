@@ -7,9 +7,15 @@ export const useMainStore = defineStore('main', {
     username: null as null | string,
     server: null as null | string,
     error: null as null | Error,
+    sonicastUrl: null as null | string,
     menuVisible: false,
     artistAlbumSortOrder: useLocalStorage<'desc' | 'asc'>('settings.artistAlbumSortOrder', 'desc')
   }),
+  getters: {
+    isCasting(): boolean {
+      return this.sonicastUrl !== null
+    }
+  },
   actions: {
     setError(error: Error) {
       this.error = error

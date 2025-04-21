@@ -7,7 +7,7 @@
     <SearchForm class="flex-grow-1 flex-md-grow-0 ms-auto me-2" />
 
     <template v-if="store.username">
-      <b-dropdown variant="link" right no-caret toggle-class="px-0">
+      <b-dropdown variant="link" right no-caret toggle-class="px-0" class="me-2">
         <template #button-content>
           <TopNavIcon>
             <Icon icon="person" />
@@ -32,19 +32,41 @@
         </b-dropdown-item-button>
       </b-dropdown>
     </template>
+
+    <template v-if="sonicastTargets.length > 0">
+      <b-dropdown variant="link" right no-caret toggle-class="px-0">
+        <template #button-content>
+          <TopNavIcon>
+            <Icon icon="cast" :class="{ casting: store.isCasting }" />
+          </TopNavIcon>
+        </template>
+
+        <CastMenuItem :url="null" name="This computer" />
+
+        <b-dropdown-divider />
+
+        <template v-for="target in sonicastTargets">
+          <CastMenuItem :key="target.url" :url="target.url" :name="target.name" />
+        </template>
+      </b-dropdown>
+    </template>
+
     <About :visible="showAboutModal" @close="showAboutModal = false" />
   </div>
 </template>
 <script lang="ts">
   import { defineComponent } from 'vue'
   import About from './About.vue'
+  import CastMenuItem from '@/shared/components/CastMenuItem.vue'
   import SearchForm from '@/library/search/SearchForm.vue'
   import { useMainStore } from '@/shared/store'
   import { useAuth } from '@/auth/service'
+  import { config } from '@/shared/config'
 
   export default defineComponent({
     components: {
       About,
+      CastMenuItem,
       SearchForm,
     },
     setup() {
@@ -55,7 +77,8 @@
     },
     data() {
       return {
-        showAboutModal: false
+        showAboutModal: false,
+        sonicastTargets: config.sonicastTargets,
       }
     },
     methods: {
@@ -69,3 +92,8 @@
     }
   })
 </script>
+<style>
+  .casting {
+    color:var(--bs-primary);
+  }
+</style>

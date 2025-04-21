@@ -4,7 +4,6 @@ import Router from 'vue-router'
 import AppComponent from '@/app/App.vue'
 import { createApp } from '@/shared/compat'
 import { components } from '@/shared/components'
-import { config } from '@/shared/config'
 import { setupRouter } from '@/shared/router'
 import { useMainStore } from '@/shared/store'
 import { API } from '@/shared/api'
@@ -36,12 +35,13 @@ const auth = createAuth()
 const api = createApi(auth)
 const router = setupRouter(auth)
 
-const sonicast = new Sonicast(api, config.sonicastUrl, auth)
+// const sonicast = new Sonicast(api, config.sonicastUrl, auth)
+const sonicast = undefined
 
 const pinia = createPinia()
   .use(({ store }) => {
     store.api = markRaw(api)
-    store.sonicast = sonicast
+    // store.sonicast = sonicast
   })
 
 const mainStore = useMainStore(pinia)
