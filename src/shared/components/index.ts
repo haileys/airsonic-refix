@@ -1,4 +1,3 @@
-import Avatar from './Avatar.vue'
 import ContentLoader from './ContentLoader.vue'
 import ContextMenu from '@/shared/components/ContextMenu.vue'
 import ContextMenuItem from '@/shared/components/ContextMenuItem.vue'
@@ -11,6 +10,7 @@ import OverflowMenu from './OverflowMenu.vue'
 import Slider from './Slider.vue'
 import Tiles from './Tiles.vue'
 import Tile from './Tile.vue'
+import TopNavIcon from './TopNavIcon.vue'
 import {
   BButton,
   BDropdown,
@@ -22,7 +22,6 @@ import {
 } from 'bootstrap-vue'
 
 export const components = {
-  Avatar,
   BButton,
   BDropdown,
   BDropdownDivider,
@@ -42,4 +41,5 @@ export const components = {
   Slider,
   Tiles,
   Tile,
+  TopNavIcon,
 }

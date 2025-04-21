@@ -1,10 +1,10 @@
 <template functional>
-  <span class="bg-secondary text-white rounded-circle avatar">
+  <span class="bg-secondary text-white rounded-circle top-nav-icon">
     <slot />
   </span>
 </template>
 <style scoped>
-  .avatar {
+  .top-nav-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -21,7 +21,7 @@
     overflow: visible;
     position: relative;
   }
-  .avatar > * {
+  .top-nav-icon > * {
     display: block;
   }
 </style>

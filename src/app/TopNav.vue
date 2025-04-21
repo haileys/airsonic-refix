@@ -9,9 +9,9 @@
     <template v-if="store.username">
       <b-dropdown variant="link" right no-caret toggle-class="px-0">
         <template #button-content>
-          <Avatar>
+          <TopNavIcon>
             <Icon icon="person" />
-          </Avatar>
+          </TopNavIcon>
         </template>
         <div class="px-3 py-1">
           {{ store.username }}
