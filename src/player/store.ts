@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import { shuffle, shuffled, trackListEquals, formatArtists } from '@/shared/utils'
 import { API, Track } from '@/shared/api'
 import { AudioController, ReplayGainMode } from '@/player/audio'
-import { Sonicast } from '@/player/remote'
+import { PlayerState, Sonicast } from '@/player/remote'
 import { useMainStore } from '@/shared/store'
 import { AuthService } from '@/auth/service'
 import { toValue } from '@vueuse/core'
@@ -281,6 +281,47 @@ export const usePlayerStore = defineStore('player', {
       }
       localStorage.setItem('player.shuffle', String(enable))
     },
+    async loadPlayerState(state: PlayerState) {
+      console.log('loadPlayerState', state)
+
+      if (sonicast) {
+        return await sonicast.loadPlayerState(state)
+      }
+
+      this._setQueue(state.tracks)
+      this._setQueueIndex(state.index)
+      this.setShuffle(state.shuffle)
+      this.repeat = state.repeat
+      this._setPaused()
+      await audio.changeTrack({ ...this.track, paused: true, playbackRate: 1 })
+      await this.seek(state.time)
+      if (state.playing) {
+        this.resume()
+      }
+    },
+    async unloadPlayerState(): Promise<PlayerState> {
+      if (sonicast) {
+        return await sonicast.unloadPlayerState()
+      }
+
+      const state = {
+        tracks: toValue(this.queue) ?? [],
+        index: Math.max(this.queueIndex, 0),
+        time: toValue(this.currentTime),
+        shuffle: toValue(this.shuffle),
+        repeat: toValue(this.repeat),
+        playing: toValue(this.isPlaying),
+      }
+
+      this._setQueue([])
+      this._setQueueIndex(-1)
+      this._setPaused()
+      console.log('would stop...')
+      audio.stop()
+
+      console.log('unloadPlayerState', state)
+      return state
+    },
     _setPlaying() {
       this.isPlaying = true
       if (mediaSession) {
@@ -455,11 +496,9 @@ export function setupPlayer(
   watch(
     () => mainStore.sonicastUrl,
     async(sonicastUrl) => {
-      const queue = toValue(playerStore.queue)
-      const queueIndex = toValue(playerStore.queueIndex)
-      const isPlaying = toValue(playerStore.isPlaying)
-      const currentTime = toValue(playerStore.currentTime)
-      console.log({ queue, queueIndex, isPlaying, currentTime })
+      console.log('hello...')
+      const playerState = await playerStore.unloadPlayerState()
+      console.log('ok...')
 
       if (sonicast) {
         disposeSonicastEvents(sonicast)
@@ -478,10 +517,7 @@ export function setupPlayer(
         setupAudioState(playerStore)
       }
 
-      if (isPlaying && queue) {
-        await playerStore.playTrackList(queue, queueIndex)
-        await playerStore.seek(currentTime)
-      }
+      await playerStore.loadPlayerState(playerState)
     },
     { immediate: true }
   )

@@ -11,6 +11,15 @@ export interface PlaybackEvent {
 export type PlaybackCallback = (ev: PlaybackEvent) => void;
 export type PlayQueueCallback = (queue: PlayQueue) => void;
 
+export type PlayerState = {
+  tracks: Track[],
+  index: number,
+  time: number,
+  shuffle: boolean,
+  repeat: boolean,
+  playing: boolean,
+}
+
 type Action<Param> = { param: Param, result: void };
 type Query<Data> = { param: void, result: Data };
 
@@ -27,6 +36,8 @@ type CommandMap = {
   'set-next-in-queue': Action<{ tracks: string[] }>,
   'queue': Query<PlayQueue>,
   'play-track-list': Action<{ tracks: string[], index?: number, shuffle?: boolean }>,
+  'load-player-state': Action<PlayerState>,
+  'unload-player-state': Query<PlayerState>,
   'remove-from-queue': Action<{ index: number }>,
   'shuffle-queue': Action<void>,
   'replay-gain-mode': Action<{ mode: string }>,
@@ -206,8 +217,12 @@ export class Sonicast {
     })
   }
 
+  private normaliseTracks(tracks: Track[]): Track[] {
+    return tracks.map(t => this.api.normalizeTrack(t))
+  }
+
   private normalizePlayQueueInPlace(playQueue: PlayQueue) {
-    playQueue.tracks = playQueue.tracks.map(t => this.api.normalizeTrack(t))
+    playQueue.tracks = this.normaliseTracks(playQueue.tracks)
   }
 
   async getPlayQueue(): Promise<PlayQueue> {
@@ -222,6 +237,16 @@ export class Sonicast {
       index: opts.index,
       shuffle: opts.shuffle,
     })
+  }
+
+  async loadPlayerState(state: PlayerState): Promise<void> {
+    await this.command('load-player-state', state)
+  }
+
+  async unloadPlayerState(): Promise<PlayerState> {
+    const state = await this.command('unload-player-state', undefined)
+    state.tracks = this.normaliseTracks(state.tracks)
+    return state
   }
 
   async playIndex(index: number): Promise<void> {
