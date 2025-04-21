@@ -8,7 +8,7 @@ import { setupRouter } from '@/shared/router'
 import { useMainStore } from '@/shared/store'
 import { API } from '@/shared/api'
 import { createAuth } from '@/auth/service'
-import { setupPlayer, usePlayerStore } from './player/store'
+import { findPlayingSonicast, setupPlayer, usePlayerStore } from './player/store'
 import { createApi } from '@/shared'
 import { createPinia, PiniaVuePlugin } from 'pinia'
 import { useFavouriteStore } from '@/library/favourite/store'
@@ -43,6 +43,17 @@ const mainStore = useMainStore(pinia)
 const playerStore = usePlayerStore(pinia)
 
 setupPlayer(playerStore, mainStore, auth, api)
+
+async function selectPlayingSonicast() {
+  // find any configured sonicast which is currently playing
+  const url = await findPlayingSonicast(playerStore, auth)
+  // select it if we're not already playing and no sonicast is selected
+  if (url && !playerStore.isPlaying && !mainStore.sonicastUrl) {
+    mainStore.sonicastUrl = url
+  }
+}
+
+selectPlayingSonicast()
 
 watch(
   () => mainStore.isLoggedIn,

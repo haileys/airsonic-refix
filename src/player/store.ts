@@ -7,6 +7,7 @@ import { PlayerState, Sonicast } from '@/player/remote'
 import { useMainStore } from '@/shared/store'
 import { AuthService } from '@/auth/service'
 import { toValue } from '@vueuse/core'
+import { config } from '@/shared/config'
 
 localStorage.removeItem('player.mute')
 localStorage.removeItem('queue')
@@ -605,4 +606,52 @@ export function setupPlayer(
         }
       }
     })
+}
+
+// tries connecting to all configured sonicasts and returns first that
+// is currently playing, or null if none are found after a timeout
+export function findPlayingSonicast(
+  playerStore: PlayerStore,
+  auth: AuthService,
+): Promise<URL | null> {
+  const api = playerStore.api
+  return new Promise((_resolve) => {
+    const allSonicasts: Sonicast[] = []
+    let resolved = false
+
+    function resolve(result: URL | null) {
+      // if we've already resolved, do nothing
+      if (resolved) {
+        return
+      }
+
+      resolved = true
+
+      // dispose all sonicasts that we opened
+      for (const sonicast of allSonicasts) {
+        sonicast.dispose()
+      }
+
+      // then call the actual promise resolve function
+      _resolve(result)
+    }
+
+    // ping all configured sonicasts and see if any are playing,
+    // then activate them
+    for (const target of config.sonicastTargets) {
+      const url = new URL(target.url)
+
+      const sonicast = new Sonicast(api, url, auth)
+      allSonicasts.push(sonicast)
+
+      sonicast.onplayback = (ev) => {
+        if (ev.playing) {
+          resolve(url)
+        }
+      }
+    }
+
+    // set a default timeout to resolve with null
+    setTimeout(() => resolve(null), 1500)
+  })
 }
