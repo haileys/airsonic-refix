@@ -393,6 +393,20 @@ function setupSonicastEvents(playerStore: PlayerStore, sonicast: Sonicast) {
     playerStore._setQueueIndex(queue.currentTrack)
     playerStore.currentTime = queue.currentTrackPosition
   }
+
+  const replayGainMap: { [_: string]: ReplayGainMode } = {
+    none: ReplayGainMode.None,
+    track: ReplayGainMode.Track,
+    album: ReplayGainMode.Album,
+    auto: ReplayGainMode.Album,
+  }
+
+  sonicast.onplayeroptions = (options) => {
+    playerStore.volume = options.volume
+    playerStore.repeat = options.repeat
+    playerStore.shuffle = options.shuffle
+    playerStore.replayGainMode = replayGainMap[options.replayGain] ?? ReplayGainMode.None
+  }
 }
 
 function disposeSonicastEvents(sonicast: Sonicast) {

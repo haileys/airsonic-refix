@@ -8,9 +8,6 @@ export interface PlaybackEvent {
   duration?: number,
 }
 
-export type PlaybackCallback = (ev: PlaybackEvent) => void;
-export type PlayQueueCallback = (queue: PlayQueue) => void;
-
 export type PlayerState = {
   tracks: Track[],
   index: number,
@@ -19,6 +16,18 @@ export type PlayerState = {
   repeat: boolean,
   playing: boolean,
 }
+
+export type Options = {
+  volume: number,
+  shuffle: boolean,
+  repeat: boolean,
+  single: boolean,
+  replayGain: string,
+}
+
+export type PlaybackCallback = (ev: PlaybackEvent) => void;
+export type PlayQueueCallback = (queue: PlayQueue) => void;
+export type OptionsCallback = (options: Options) => void;
 
 type Action<Param> = { param: Param, result: void };
 type Query<Data> = { param: void, result: Data };
@@ -85,6 +94,7 @@ type ServerMsg =
   | { playback: PlaybackEvent }
   | { queue: PlayQueue }
   | { response: Response }
+  | { options: Options }
   ;
 
 function websocketUrl(baseUrl: URL, auth: AuthService) {
@@ -107,6 +117,7 @@ export class Sonicast {
 
   public onplayback: PlaybackCallback | null = null
   public onplayqueue: PlayQueueCallback | null = null
+  public onplayeroptions: OptionsCallback | null = null
 
   constructor(api: API, baseUrl: URL, auth: AuthService) {
     this.api = api
@@ -144,6 +155,12 @@ export class Sonicast {
       if (callback) {
         this.awaitingResponse.delete(response.seq)
         callback(response)
+      }
+    }
+
+    if ('options' in msg) {
+      if (this.onplayeroptions) {
+        this.onplayeroptions(msg.options)
       }
     }
   }
