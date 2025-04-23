@@ -6,6 +6,7 @@
     :max="max"
     :interval="step"
     :tooltip-formatter="formatter"
+    :duration="0.07"
     @change="onInput"
   />
 </template>
@@ -41,14 +42,15 @@
 
   .vue-slider {
     cursor: pointer;
+    border-radius:2px
   }
   ::v-deep .vue-slider-rail {
     background-color: var(--bs-secondary);
-    border-radius: 0;
+    border-radius:2px;
   }
   ::v-deep .vue-slider-process {
     background-color: var(--bs-primary);
-    border-radius: 0;
+    border-radius:2px;
   }
   ::v-deep .vue-slider-dot-handle  {
     background-color: var(--bs-primary);

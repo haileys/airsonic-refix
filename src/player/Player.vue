@@ -63,7 +63,7 @@
                 <Icon :icon="isMuted ? 'mute' : 'volume'" />
               </b-button>
               <b-popover target="player-volume-btn" placement="top" triggers="click blur" no-fade>
-                <Slider class="pt-2" style="height: 120px;" direction="btt"
+                <Slider class="pt-1 px-1" style="height: 240px; width:10px" direction="btt"
                         :min="0" :max="1" :step="0.01" percent
                         :value="volume" @input="setVolume"
                 />
@@ -92,9 +92,9 @@
               </b-button>
             </div>
             <OverflowMenu class="d-md-none">
-              <div class="d-flex justify-content-between align-items-center px-3 py-1">
+              <div class="d-flex justify-content-between align-items-center px-3 py-1" style="width:80vw; gap:1rem">
                 <span>Volume</span>
-                <Slider class="p-3" style="width: 120px;"
+                <Slider style="flex-grow:1; height:8px"
                         :min="0" :max="1" :step="0.01" percent
                         :value="volume" @input="setVolume"
                 />
