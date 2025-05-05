@@ -1,8 +1,8 @@
 import { md5, randomString, toQueryString } from '@/shared/utils'
-import { config } from '@/shared/config'
 import { inject } from 'vue'
 import { App, Plugin } from '@/shared/compat'
 import { pickBy } from 'lodash-es'
+import { config } from '@/shared/config'
 
 type Auth = { password?: string, salt?: string, hash?: string }
 
@@ -22,8 +22,8 @@ export class AuthService {
   private password = ''
   private authenticated = false
 
-  constructor() {
-    this.server = config.serverUrl || localStorage.getItem('server') || ''
+  constructor(baseUrl: string) {
+    this.server = baseUrl
     this.username = localStorage.getItem('username') || ''
     this.salt = localStorage.getItem('salt') || ''
     this.hash = localStorage.getItem('hash') || ''
@@ -31,9 +31,6 @@ export class AuthService {
   }
 
   private saveSession() {
-    if (!config.serverUrl) {
-      localStorage.setItem('server', this.server)
-    }
     localStorage.setItem('username', this.username)
     localStorage.setItem('salt', this.salt)
     localStorage.setItem('hash', this.hash)
@@ -145,7 +142,7 @@ export function useAuth(): AuthService {
 }
 
 export function createAuth(): AuthService & Plugin {
-  const instance = new AuthService()
+  const instance = new AuthService(config.serverUrl)
   return Object.assign(instance, {
     install: (app: App) => {
       app.provide(apiSymbol, instance)

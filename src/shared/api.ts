@@ -129,52 +129,82 @@ export class SubsonicError extends Error {
 }
 
 export class API {
-  private readonly fetch: (path: string, params?: any) => Promise<any>
+  // private readonly fetchWithServer: (server: string, path: string, params?: any) => Promise<any>
+  // private readonly fetch: (path: string, params?: any) => Promise<any>
+  // private readonly fetchPodcasts: (path: string, params?: any) => Promise<any>
   private readonly clientName = window.origin || 'web'
+  private auth: AuthService
 
-  constructor(private auth: AuthService) {
-    this.fetch = (path: string, params: any) => {
-      params = { ...params, v: '1.15.0', f: 'json', c: this.clientName }
+  constructor(auth: AuthService) {
+    this.auth = auth
+  }
 
-      const request = auth.serverInfo?.extensions.includes('formPost')
-        ? new Request(`${this.auth.server}/${path}`, {
-          method: 'POST',
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: `${toQueryString(params)}&${this.auth.urlParams}`
-        })
-        : new Request(`${this.auth.server}/${path}?${toQueryString(params)}&${this.auth.urlParams}`, {
-          method: 'GET',
-          headers: {
-            Accept: 'application/json',
-          }
-        })
+  fetchWithServer(server: string, path: string, params?: any): Promise<any> {
+    params = { ...params, v: '1.15.0', f: 'json', c: this.clientName }
 
-      return window
-        .fetch(request)
-        .then(response => {
-          if (response.ok) {
-            return response.json()
-          }
-          const message = `Request failed with status ${response.status}`
-          // Handle non-standard Navidrome response
-          if (response.status === 501) {
-            return Promise.reject(new UnsupportedOperationError(message))
-          }
-          return Promise.reject(new Error(message))
-        })
-        .then(response => {
-          const subsonicResponse = response['subsonic-response']
-          if (subsonicResponse.status === 'ok') {
-            return subsonicResponse
-          }
-          const code = subsonicResponse.error?.code
-          const message = subsonicResponse.error?.message || subsonicResponse.status
-          throw new SubsonicError(message, code)
-        })
+    const request = this.auth.serverInfo?.extensions.includes('formPost')
+      ? new Request(`${server}/${path}`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `${toQueryString(params)}&${this.auth.urlParams}`
+      })
+      : new Request(`${server}/${path}?${toQueryString(params)}&${this.auth.urlParams}`, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+        }
+      })
+
+    return window
+      .fetch(request)
+      .then(response => {
+        if (response.ok) {
+          return response.json()
+        }
+        const message = `Request failed with status ${response.status}`
+        // Handle non-standard Navidrome response
+        if (response.status === 501) {
+          return Promise.reject(new UnsupportedOperationError(message))
+        }
+        return Promise.reject(new Error(message))
+      })
+      .then(response => {
+        const subsonicResponse = response['subsonic-response']
+        if (subsonicResponse.status === 'ok') {
+          return subsonicResponse
+        }
+        const code = subsonicResponse.error?.code
+        const message = subsonicResponse.error?.message || subsonicResponse.status
+        throw new SubsonicError(message, code)
+      })
+  }
+
+  async fetch(path: string, params?: any): Promise<any> {
+    return await this.fetchWithServer(this.auth.server, path, params)
+  }
+
+  async fetchPodcasts(path: string, params?: any): Promise<any> {
+    return await this.fetchWithServer(config.podcasts?.url ?? this.auth.server, path, params)
+  }
+
+  async fetchWithId<P extends { id: undefined | string }>(path: string, params: P): Promise<any> {
+    return await this.fetchWithServer(this.serverForId(params.id), path, params)
+  }
+
+  serverForId(id: string | undefined): string {
+    if (id && config.podcasts) {
+      if (id.startsWith(config.podcasts.podcastPrefix)) {
+        return config.podcasts.url
+      }
+      if (id.startsWith(config.podcasts.episodePrefix)) {
+        return config.podcasts.url
+      }
     }
+
+    return this.auth.server
   }
 
   async getGenres() {
@@ -328,6 +358,12 @@ export class API {
   }
 
   async getPlayQueue(): Promise<PlayQueue> {
+    return {
+      tracks: [],
+      currentTrack: 0,
+      currentTrackPosition: 0,
+    }
+
     const response = await this.fetch('rest/getPlayQueue')
     const tracks = (response.playQueue?.entry || []).map(this.normalizeTrack, this) as Track[]
     const currentTrackId = response.playQueue?.current?.toString()
@@ -380,7 +416,7 @@ export class API {
       albumId: type === 'album' ? id : undefined,
       artistId: type === 'artist' ? id : undefined,
     }
-    await this.fetch('rest/star', params)
+    await this.fetchWithId('rest/star', params)
   }
 
   async removeFavourite(id: string, type: 'track' | 'album' | 'artist') {
@@ -389,7 +425,7 @@ export class API {
       albumId: type === 'album' ? id : undefined,
       artistId: type === 'artist' ? id : undefined,
     }
-    await this.fetch('rest/unstar', params)
+    await this.fetchWithId('rest/unstar', params)
   }
 
   async search(query: string, type: string | null, size: number, offset?: number): Promise<SearchResult> {
@@ -443,25 +479,25 @@ export class API {
   }
 
   async getPodcasts(): Promise<any[]> {
-    const response = await this.fetch('rest/getPodcasts')
+    const response = await this.fetchPodcasts('rest/getPodcasts')
     return (response?.podcasts?.channel || []).map(this.normalizePodcast, this)
   }
 
   async getPodcast(id: string): Promise<any> {
-    const response = await this.fetch('rest/getPodcasts', { id })
+    const response = await this.fetchPodcasts('rest/getPodcasts', { id })
     return this.normalizePodcast(response?.podcasts?.channel[0])
   }
 
   async addPodcast(url: string): Promise<any> {
-    return this.fetch('rest/createPodcastChannel', { url })
+    return this.fetchPodcasts('rest/createPodcastChannel', { url })
   }
 
   async refreshPodcasts(): Promise<void> {
-    return this.fetch('rest/refreshPodcasts')
+    return this.fetchPodcasts('rest/refreshPodcasts')
   }
 
   async deletePodcast(id: string): Promise<any> {
-    return this.fetch('rest/deletePodcastChannel', { id })
+    return this.fetchPodcasts('rest/deletePodcastChannel', { id })
   }
 
   async getDirectory(path: string): Promise<Directory> {
@@ -518,15 +554,16 @@ export class API {
   }
 
   async scrobble(id: string): Promise<void> {
-    return this.fetch('rest/scrobble', { id, submission: true })
+    return this.fetchWithId('rest/scrobble', { id, submission: true })
   }
 
   async updateNowPlaying(id: string): Promise<void> {
-    return this.fetch('rest/scrobble', { id, submission: false })
+    return this.fetchWithId('rest/scrobble', { id, submission: false })
   }
 
   private normalizeRadioStation(item: any): Track & RadioStation {
     const image = config.radioCoverArt[item.id] ?? null
+    console.log(`radio id: ${JSON.stringify(item.id)}`)
 
     return {
       id: `radio-${item.id}`,
@@ -574,6 +611,7 @@ export class API {
 
     if (isRadio) {
       const radioId = item.id.replace(/^radio-/, '')
+      console.log(`radio id: ${JSON.stringify(radioId)}`)
       track.image = config.radioCoverArt[radioId] ?? null
     }
 
@@ -678,7 +716,9 @@ export class API {
   }
 
   getDownloadUrl(id: any) {
-    const { server, urlParams } = this.auth
+    const { urlParams } = this.auth
+    const server = this.serverForId(id)
+
     return `${server}/rest/download` +
       `?id=${id}` +
       '&v=1.15.0' +
@@ -690,7 +730,9 @@ export class API {
     if (!item.coverArt) {
       return undefined
     }
-    const { server, urlParams } = this.auth
+    const { urlParams } = this.auth
+    const server = this.serverForId(item.coverArt)
+
     return `${server}/rest/getCoverArt` +
       `?id=${item.coverArt}` +
       '&v=1.15.0' +
@@ -700,7 +742,9 @@ export class API {
   }
 
   private getStreamUrl(id: any) {
-    const { server, urlParams } = this.auth
+    const { urlParams } = this.auth
+    const server = this.serverForId(id)
+
     return `${server}/rest/stream` +
       `?id=${id}` +
       '&v=1.15.0' +
