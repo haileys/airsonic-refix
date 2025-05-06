@@ -10,27 +10,44 @@
             <div class="d-flex mb-2">
               <Logo class="mx-auto" />
             </div>
-            <div v-if="!config.serverUrl" class="mb-3">
-              <label class="form-label">Server</label>
-              <input v-model="server" name="server" type="text"
-                     class="form-control" :class="{'is-invalid': hasError}">
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Username</label>
-              <input v-model="username" name="username" type="text"
-                     class="form-control" :class="{'is-invalid': hasError}">
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Password</label>
-              <input v-model="password" name="password" type="password"
-                     class="form-control" :class="{'is-invalid': hasError}">
-            </div>
-            <div v-if="error != null" class="alert alert-danger">
-              Could not log in. ({{ error.message }})
-            </div>
-            <button class="btn btn-primary w-100" :disabled="busy" @click="login">
-              <span v-show="false" class="spinner-border spinner-border-sm" /> Log in
-            </button>
+
+            <template v-if="!showLoginFields">
+              <div class="btn-group-vertical mt-2 w-100" role="group" aria-label="Login options">
+                <button v-if="config.guestEnabled" class="btn btn-primary w-100 p-3" :disabled="busy" @click="guestLogin">
+                  <span v-show="false" class="spinner-border spinner-border-sm" /> Continue as Guest
+                </button>
+
+                <button v-if="!showUsernamePasswordInput" class="btn btn-secondary w-100 p-3" @click="setShowLoginFields">
+                  Log in
+                </button>
+              </div>
+            </template>
+            <template v-else>
+              <div v-if="!config.serverUrl" class="mb-3">
+                <label class="form-label">Server</label>
+                <input v-model="server" name="server" type="text"
+                       class="form-control" :class="{'is-invalid': hasError}">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Username</label>
+                <input v-model="username" name="username" type="text"
+                       class="form-control" :class="{'is-invalid': hasError}">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Password</label>
+                <input v-model="password" name="password" type="password"
+                       class="form-control" :class="{'is-invalid': hasError}">
+              </div>
+              <div v-if="error != null" class="alert alert-danger">
+                Could not log in. ({{ error.message }})
+              </div>
+              <button class="btn btn-primary w-100" :disabled="busy" @click="login">
+                <span v-show="false" class="spinner-border spinner-border-sm" /> Log in
+              </button>
+              <button v-if="config.guestEnabled" class="btn btn-secondary w-100 mt-3" :disabled="busy" @click="guestLogin">
+                <span v-show="false" class="spinner-border spinner-border-sm" /> Continue as Guest
+              </button>
+            </template>
           </form>
         </div>
       </b-overlay>
@@ -67,6 +84,7 @@
         busy: false,
         error: null,
         displayForm: false,
+        showLoginFields: !config.guestEnabled,
       }
     },
     computed: {
@@ -87,12 +105,21 @@
       }
     },
     methods: {
+      setShowLoginFields() {
+        this.showLoginFields = true
+      },
+      guestLogin() {
+        this.loginWithCredentials('guest', '')
+      },
       login() {
+        this.loginWithCredentials(this.username, this.password)
+      },
+      loginWithCredentials(username: string, password: string) {
         this.error = null
         this.busy = true
-        this.auth.loginWithPassword(this.server, this.username, this.password)
+        this.auth.loginWithPassword(this.server, username, password)
           .then(() => {
-            this.store.setLoginSuccess(this.username, this.server)
+            this.store.setLoginSuccess(username, this.server)
             this.$router.replace(this.returnTo)
           })
           .catch(err => {
