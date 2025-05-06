@@ -24,13 +24,13 @@
 
         <!-- Controls--->
         <div class="col-auto p-0">
-          <b-button variant="link" class="m-2 d-none d-sm-inline-block" @click="previous">
+          <b-button variant="link" class="m-0 d-none d-sm-inline-block" @click="previous">
             <Icon icon="skip-start" />
           </b-button>
-          <b-button variant="link" size="lg" class="m-2" @click="playPause">
+          <b-button variant="link" size="lg" class="m-0" @click="playPause">
             <Icon :icon="playPauseIcon" />
           </b-button>
-          <b-button variant="link" class="m-2" @click="next">
+          <b-button variant="link" class="m-0" @click="next">
             <Icon icon="skip-end" />
           </b-button>
         </div>
