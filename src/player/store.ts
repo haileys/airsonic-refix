@@ -30,7 +30,7 @@ export const usePlayerStore = defineStore('player', {
     currentTime: 0, // position of current track in seconds
     streamTitle: null as null | string,
     replayGainMode: storedReplayGainMode as ReplayGainMode,
-    repeat: localStorage.getItem('player.repeat') !== 'false',
+    repeat: localStorage.getItem('player.repeat') === 'true',
     shuffle: localStorage.getItem('player.shuffle') === 'true',
     volume: storedVolume,
     podcastPlaybackRate: storedPodcastPlaybackRate,
