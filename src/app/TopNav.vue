@@ -91,7 +91,7 @@
         return this.$api.scan()
       },
       login() {
-        this.$router.push({ name: 'login' })
+        this.$router.push({ name: 'login', query: { returnTo: this.$route.fullPath } })
       },
       logout() {
         this.auth.logout()
