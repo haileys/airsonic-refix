@@ -4,9 +4,11 @@
       <Icon icon="nav" />
     </button>
 
-    <SearchForm class="flex-grow-1 flex-md-grow-0 ms-auto me-2" />
+    <div class="flex-grow-1 flex-md-grow-0 ms-auto" />
 
-    <template v-if="store.username">
+    <SearchForm v-if="store.isAuthenticated" class="me-2" />
+
+    <template v-if="store.isAuthenticated">
       <b-dropdown variant="link" right no-caret toggle-class="px-0" class="me-2">
         <template #button-content>
           <TopNavIcon>
@@ -32,8 +34,13 @@
         </b-dropdown-item-button>
       </b-dropdown>
     </template>
+    <template v-else>
+      <button class="btn bg-secondary text-white rounded" @click="login">
+        Login
+      </button>
+    </template>
 
-    <template v-if="sonicastTargets.length > 0">
+    <template v-if="store.sonicastTargets.length > 0">
       <b-dropdown variant="link" right no-caret toggle-class="px-0">
         <template #button-content>
           <TopNavIcon>
@@ -45,7 +52,7 @@
 
         <b-dropdown-divider />
 
-        <template v-for="target in sonicastTargets">
+        <template v-for="target in store.sonicastTargets">
           <CastMenuItem :key="target.url" :url="target.url" :name="target.name" />
         </template>
       </b-dropdown>
@@ -61,7 +68,6 @@
   import SearchForm from '@/library/search/SearchForm.vue'
   import { useMainStore } from '@/shared/store'
   import { useAuth } from '@/auth/service'
-  import { config } from '@/shared/config'
 
   export default defineComponent({
     components: {
@@ -78,12 +84,14 @@
     data() {
       return {
         showAboutModal: false,
-        sonicastTargets: config.sonicastTargets,
       }
     },
     methods: {
       scan() {
         return this.$api.scan()
+      },
+      login() {
+        this.$router.push({ name: 'login' })
       },
       logout() {
         this.auth.logout()

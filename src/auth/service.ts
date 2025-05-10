@@ -74,12 +74,14 @@ export class AuthService {
   }
 
   get urlParams() {
-    return toQueryString(pickBy({
+    return toQueryString({
       u: this.username,
-      s: this.salt,
-      t: this.hash,
-      p: this.password,
-    }))
+      ...pickBy({
+        s: this.salt,
+        t: this.hash,
+        p: this.password,
+      })
+    })
   }
 
   logout() {

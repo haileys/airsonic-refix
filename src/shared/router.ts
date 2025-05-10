@@ -1,4 +1,4 @@
-import Router from 'vue-router'
+import Router, { Route } from 'vue-router'
 import Login from '@/auth/Login.vue'
 import Queue from '@/player/Queue.vue'
 import Discover from '@/discover/Discover.vue'
@@ -18,6 +18,7 @@ import SearchResult from '@/library/search/SearchResult.vue'
 import { AuthService } from '@/auth/service'
 import ArtistTracks from '@/library/artist/ArtistTracks.vue'
 import Files from '@/library/file/Files.vue'
+import { config } from './config'
 
 export function setupRouter(auth: AuthService) {
   const router = new Router({
@@ -149,11 +150,27 @@ export function setupRouter(auth: AuthService) {
     ]
   })
 
+  const allowRoute = (to: Route) => {
+    if (auth.isAuthenticated()) {
+      return true
+    }
+
+    if (to.name === 'login') {
+      return true
+    }
+
+    if (config.guestEnabled && to.name === 'album') {
+      return true
+    }
+
+    return false
+  }
+
   router.beforeEach((to, from, next) => {
-    if (to.name !== 'login' && !auth.isAuthenticated()) {
-      next({ name: 'login', query: { returnTo: to.fullPath } })
-    } else {
+    if (allowRoute(to)) {
       next()
+    } else {
+      next({ name: 'login', query: { returnTo: to.fullPath } })
     }
   })
 

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { useLocalStorage } from '@vueuse/core'
+import { config, SonicastTarget } from './config'
 
 export const useMainStore = defineStore('main', {
   state: () => ({
@@ -12,8 +13,18 @@ export const useMainStore = defineStore('main', {
     artistAlbumSortOrder: useLocalStorage<'desc' | 'asc'>('settings.artistAlbumSortOrder', 'desc')
   }),
   getters: {
+    isAuthenticated(): boolean {
+      return !!this.username
+    },
     isCasting(): boolean {
       return this.sonicastUrl !== null
+    },
+    sonicastTargets(): SonicastTarget[] {
+      if (this.isAuthenticated) {
+        return config.sonicastTargets
+      } else {
+        return []
+      }
     }
   },
   actions: {
