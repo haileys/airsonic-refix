@@ -16,6 +16,9 @@
       <ContextMenuItem v-if="!track.isStream" icon="download" @click="download()">
         Download
       </ContextMenuItem>
+      <ContextMenuItem v-if="showCopyLinkToTrack" @click="copyLink">
+        Copy link
+      </ContextMenuItem>
       <slot :item="track" />
     </OverflowMenu>
 
@@ -44,6 +47,7 @@
   import { usePlaylistStore } from '@/library/playlist/store'
   import { usePlayerStore } from '@/player/store'
   import { Track } from '@/shared/api'
+  import { useClipboard } from '@vueuse/core'
 
   export default defineComponent({
     props: {
@@ -54,6 +58,7 @@
         favouriteStore: useFavouriteStore(),
         playlistStore: usePlaylistStore(),
         playerStore: usePlayerStore(),
+        clipboard: useClipboard(),
       }
     },
     data() {
@@ -65,6 +70,9 @@
       isFavourite(): boolean {
         return !!this.favouriteStore.tracks[this.track.id]
       },
+      showCopyLinkToTrack(): boolean {
+        return !!this.track.albumId
+      }
     },
     methods: {
       toggleFavourite() {
@@ -83,6 +91,17 @@
         this.showPlaylistSelect = false
         return this.playlistStore.addTracks(playlistId, [this.track.id])
       },
+      copyLink() {
+        const route = this.$router.resolve({
+          name: 'album-track',
+          params: {
+            id: this.track.albumId,
+            track: this.track.id,
+          }
+        })
+        const url = new URL(route.href, location.origin).href
+        this.clipboard.copy(url)
+      }
     }
   })
 </script>

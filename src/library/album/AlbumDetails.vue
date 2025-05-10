@@ -56,6 +56,9 @@
           <ContextMenuItem icon="plus" @click="addToQueue">
             Add to queue
           </ContextMenuItem>
+          <ContextMenuItem @click="copyLink">
+            Copy link
+          </ContextMenuItem>
         </OverflowMenu>
       </div>
     </Hero>
@@ -75,6 +78,7 @@
   import IconMusicBrainz from '@/shared/components/IconMusicBrainz.vue'
   import OverflowFade from '@/shared/components/OverflowFade.vue'
   import { usePlayerStore } from '@/player/store'
+  import { useClipboard } from '@vueuse/core'
 
   export default defineComponent({
     components: {
@@ -91,6 +95,7 @@
       return {
         favouriteStore: useFavouriteStore(),
         playerStore: usePlayerStore(),
+        clipboard: useClipboard(),
       }
     },
     data() {
@@ -130,6 +135,11 @@
       },
       toggleFavourite() {
         return this.favouriteStore.toggle('album', this.id)
+      },
+      copyLink() {
+        const route = this.$router.resolve({ name: 'album', params: { id: this.id } })
+        const url = new URL(route.href, location.origin).href
+        this.clipboard.copy(url)
       },
       selectTrack() {
         const tracks = this.album?.tracks ?? []
