@@ -1,0 +1,5 @@
+#!/bin/bash -eu
+rm -rf dist
+yarn build
+rm -f dist/_redirects dist/report.html dist/env.js
+rsync -avr dist/ tigron:/var/www/music.hails.org/
