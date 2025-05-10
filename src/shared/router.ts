@@ -68,6 +68,12 @@ export function setupRouter(auth: AuthService) {
         props: true,
       },
       {
+        name: 'album-track',
+        path: '/albums/id/:id/track/:track',
+        component: AlbumDetails,
+        props: true,
+      },
+      {
         name: 'artists',
         path: '/artists/:sort?',
         component: ArtistLibrary,
@@ -159,8 +165,10 @@ export function setupRouter(auth: AuthService) {
       return true
     }
 
-    if (config.guestEnabled && to.name === 'album') {
-      return true
+    if (config.guestEnabled) {
+      if (to.name === 'album' || to.name === 'album-track') {
+        return true
+      }
     }
 
     return false

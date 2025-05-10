@@ -84,7 +84,8 @@
       TrackList,
     },
     props: {
-      id: { type: String, required: true }
+      id: { type: String, required: true },
+      track: { type: String, default: '' },
     },
     setup() {
       return {
@@ -104,6 +105,11 @@
     },
     async created() {
       this.album = await this.$api.getAlbumDetails(this.id)
+
+      const queueIsEmpty = (this.playerStore?.queue?.length ?? 0) === 0
+      if (queueIsEmpty) {
+        this.selectTrack()
+      }
     },
     methods: {
       playNow() {
@@ -125,6 +131,23 @@
       toggleFavourite() {
         return this.favouriteStore.toggle('album', this.id)
       },
+      selectTrack() {
+        const tracks = this.album?.tracks ?? []
+        for (let i = 0; i < tracks.length; i++) {
+          const track = tracks[i]
+          if (track.id === this.track) {
+            this.playerStore.loadPlayerState({
+              tracks,
+              index: i,
+              time: 0,
+              shuffle: false,
+              repeat: false,
+              playing: false,
+            })
+            break
+          }
+        }
+      }
     }
   })
 </script>

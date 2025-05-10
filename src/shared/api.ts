@@ -182,6 +182,10 @@ export class API {
       })
   }
 
+  get isAuthenticated(): boolean {
+    return this.auth.isAuthenticated()
+  }
+
   async fetch(path: string, params?: any): Promise<any> {
     return await this.fetchWithServer(this.auth.server, path, params)
   }
@@ -554,11 +558,15 @@ export class API {
   }
 
   async scrobble(id: string): Promise<void> {
-    return this.fetchWithId('rest/scrobble', { id, submission: true })
+    if (this.isAuthenticated) {
+      return this.fetchWithId('rest/scrobble', { id, submission: true })
+    }
   }
 
   async updateNowPlaying(id: string): Promise<void> {
-    return this.fetchWithId('rest/scrobble', { id, submission: false })
+    if (this.isAuthenticated) {
+      return this.fetchWithId('rest/scrobble', { id, submission: false })
+    }
   }
 
   private normalizeRadioStation(item: any): Track & RadioStation {
