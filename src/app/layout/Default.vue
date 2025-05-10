@@ -1,8 +1,8 @@
 <template>
   <div>
     <div class="min-vh-100 d-flex">
-      <Sidebar />
-      <main class="container-fluid py-2">
+      <Sidebar v-if="store.isAuthenticated" />
+      <main :class="{ 'container-fluid': true, 'py-2': true, 'mx-4': !store.isAuthenticated }">
         <TopNav />
         <slot />
       </main>
@@ -15,12 +15,18 @@
   import TopNav from '@/app/TopNav.vue'
   import Sidebar from '@/app/Sidebar.vue'
   import Player from '@/player/Player.vue'
+  import { useMainStore } from '@/shared/store'
 
   export default defineComponent({
     components: {
       TopNav,
       Sidebar,
       Player,
+    },
+    setup() {
+      return {
+        store: useMainStore(),
+      }
     },
   })
 </script>
