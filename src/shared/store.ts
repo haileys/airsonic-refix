@@ -13,14 +13,11 @@ export const useMainStore = defineStore('main', {
     artistAlbumSortOrder: useLocalStorage<'desc' | 'asc'>('settings.artistAlbumSortOrder', 'desc')
   }),
   getters: {
-    isAuthenticated(): boolean {
-      return !!this.username
-    },
     isCasting(): boolean {
       return this.sonicastUrl !== null
     },
     sonicastTargets(): SonicastTarget[] {
-      if (this.isAuthenticated) {
+      if (this.isLoggedIn) {
         return config.sonicastTargets
       } else {
         return []

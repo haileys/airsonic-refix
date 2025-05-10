@@ -6,9 +6,9 @@
 
     <div class="flex-grow-1 flex-md-grow-0 ms-auto" />
 
-    <SearchForm v-if="store.isAuthenticated" class="me-2" />
+    <SearchForm v-if="store.isLoggedIn" class="me-2" />
 
-    <template v-if="store.isAuthenticated">
+    <template v-if="store.isLoggedIn">
       <b-dropdown variant="link" right no-caret toggle-class="px-0" class="me-2">
         <template #button-content>
           <TopNavIcon>

@@ -1,5 +1,5 @@
 <template>
-  <div v-if="store.isAuthenticated" class="sidebar-container elevated">
+  <div v-if="store.isLoggedIn" class="sidebar-container elevated">
     <div class="sidebar-fixed d-none d-md-block">
       <SidebarNav />
     </div>
