@@ -44,7 +44,6 @@
     top: -50%;
     height: calc(100vh + 300px);
 
-    transform: scale(1.025);
     filter: blur(8px);
     opacity: 0.25;
 
