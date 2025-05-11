@@ -39,15 +39,15 @@
   .backdrop {
     position: absolute;
     z-index: -1;
-    width: 100%;
+    width: 100vw;
     top: -50%;
-    height: calc(100% + 300px);
+    height: calc(100vh + 300px);
 
     transform: scale(1.025);
     filter: blur(8px);
     opacity: 0.25;
 
-    background-size: max(100%, 1000px) auto;
+    background-size: max(100vw, 1000px) auto;
     background-position: center center;
     background-repeat: no-repeat;
 
