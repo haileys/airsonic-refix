@@ -165,7 +165,7 @@ export function setupRouter(auth: AuthService) {
       return true
     }
 
-    if (config.guestEnabled && !auth.username) {
+    if (config.publicAlbums && !auth.username) {
       if (to.name === 'album' || to.name === 'album-track') {
         return true
       }

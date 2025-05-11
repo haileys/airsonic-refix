@@ -15,6 +15,7 @@ export interface Config {
   sonicastTargets: SonicastTarget[],
   radioCoverArt: { [id: string]: string },
   guestEnabled: boolean,
+  publicAlbums: boolean,
 }
 
 const env = (window as any).env
@@ -36,4 +37,5 @@ export const config: Config = {
   sonicastTargets: globalConfig?.sonicastTargets ?? [],
   radioCoverArt: globalConfig?.radioCoverArt ?? {},
   guestEnabled: globalConfig?.guestEnabled ?? false,
+  publicAlbums: globalConfig?.publicAlbums ?? false,
 }
