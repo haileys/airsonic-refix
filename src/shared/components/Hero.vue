@@ -1,6 +1,8 @@
 <template>
   <div class="d-flex flex-column flex-md-row align-items-center align-items-md-start mb-3">
-    <div class="backdrop" />
+    <div class="backdrop-container">
+      <div class="backdrop" />
+    </div>
     <img v-if="image" :src="image">
     <img v-else src="@/shared/assets/fallback.svg">
     <div class="body d-flex flex-column align-items-center align-items-md-start pt-4 pt-md-0 ps-md-4 pb-1 text-center text-md-start">
@@ -36,18 +38,28 @@
     max-height: 300px;
     overflow-y: auto;
   }
-  .backdrop {
+  .backdrop-container {
     position: absolute;
     z-index: -1;
     left: 0px;
     width: 100vw;
     top: -50%;
     height: calc(100vh + 300px);
+    overflow: hidden;
+  }
+  .backdrop {
+    --blur-radius: 8px;
 
-    filter: blur(8px);
+    position: absolute;
+    left: calc(var(--blur-radius) * -0.5);
+    top: calc(var(--blur-radius) * -0.5);
+    width: calc(100% + var(--blur-radius));
+    height: calc(100% + var(--blur-radius));
+
+    filter: blur(var(--blur-radius));
     opacity: 0.25;
 
-    background-size: max(100vw, 1000px) auto;
+    background-size: max(100%, 1000px) auto;
     background-position: center center;
     background-repeat: no-repeat;
 
