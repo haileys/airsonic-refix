@@ -260,10 +260,11 @@
     height: 0;
     max-height: 0;
     transition: max-height 0.5s;
+    padding-bottom: env(safe-area-inset-bottom, 0);
   }
   .visible {
     height: auto;
-    max-height: 100px;
+    max-height: calc(100px + env(safe-area-inset-bottom, 0px));
   }
   .icon {
     display: flex;
