@@ -3,16 +3,18 @@
     <div class="min-vh-100 d-flex">
       <template v-if="store.isLoggedIn">
         <Sidebar />
-        <main class="container-fluid py-2">
+        <main class="container-fluid">
           <TopNav />
           <slot />
         </main>
       </template>
       <template v-else>
-        <main class="container-fluid p-4">
-          <button class="btn bg-secondary text-white rounded float-right" @click="login">
-            Login
-          </button>
+        <main class="container-fluid logged-out">
+          <div class="floatable-action-row">
+            <button class="btn bg-secondary text-white rounded floatable-login-btn mb-3" @click="login">
+              Login
+            </button>
+          </div>
 
           <slot />
         </main>
@@ -43,10 +45,21 @@
 </script>
 <style scoped>
   main {
+    padding-top: 0.75rem;
     margin-bottom: 80px;
     overflow-x: hidden;
   }
-  .float-right {
-    float: right;
+  .floatable-action-row {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: right;
+  }
+  @media (min-width: 768px) {
+    .floatable-action-row {
+      float: right;
+    }
+    main.logged-out {
+      padding: 1.5rem;
+    }
   }
 </style>
